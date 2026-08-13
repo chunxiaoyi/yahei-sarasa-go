@@ -1,0 +1,2292 @@
+{
+  "Regular": {
+    "weight": 400,
+    "records": [
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 2,
+        "value": "obyčejné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 2,
+        "value": "Standard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 2,
+        "value": "Κανονικά"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Microsoft YaHei"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Microsoft YaHei Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Microsoft YaHei"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "MicrosoftYaHei"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 2,
+        "value": "Normaali"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 2,
+        "value": "Normál"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 2,
+        "value": "Normale"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 2,
+        "value": "Standaard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 2,
+        "value": "Normalny"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 2,
+        "value": "Обычный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 2,
+        "value": "Normálne"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 2,
+        "value": "Navadno"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 2,
+        "value": "Arrunta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "微软雅黑"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "微软雅黑 Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "微软雅黑"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiRegular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 2,
+        "value": "Normal"
+      }
+    ]
+  },
+  "RegularUI": {
+    "weight": 400,
+    "records": [
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 2,
+        "value": "obyčejné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 2,
+        "value": "Standard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 2,
+        "value": "Κανονικά"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Microsoft YaHei UI Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiUI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 2,
+        "value": "Normaali"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 2,
+        "value": "Normál"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 2,
+        "value": "Normale"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 2,
+        "value": "Standaard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 2,
+        "value": "Normalny"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 2,
+        "value": "Обычный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 2,
+        "value": "Normálne"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 2,
+        "value": "Navadno"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 2,
+        "value": "Arrunta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "Microsoft Yahei UI Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "Microsoft Yahei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiUIRegular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 2,
+        "value": "Normal"
+      }
+    ]
+  },
+  "Bold": {
+    "weight": 700,
+    "records": [
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 2,
+        "value": "Negreta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 4,
+        "value": "Microsoft YaHei Negreta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 2,
+        "value": "tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 4,
+        "value": "Microsoft YaHei tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 2,
+        "value": "fed"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 4,
+        "value": "Microsoft YaHei fed"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 2,
+        "value": "Fett"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 4,
+        "value": "Microsoft YaHei Fett"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 2,
+        "value": "Έντονα"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 4,
+        "value": "Microsoft YaHei Έντονα"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Microsoft YaHei"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Microsoft YaHei-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Microsoft YaHei Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "MicrosoftYaHei-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 2,
+        "value": "Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 4,
+        "value": "Microsoft YaHei Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 2,
+        "value": "Lihavoitu"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 4,
+        "value": "Microsoft YaHei Lihavoitu"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 2,
+        "value": "Gras"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 4,
+        "value": "Microsoft YaHei Gras"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 2,
+        "value": "Félkövér"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 4,
+        "value": "Microsoft YaHei Félkövér"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 2,
+        "value": "Grassetto"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 4,
+        "value": "Microsoft YaHei Grassetto"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 2,
+        "value": "Vet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 4,
+        "value": "Microsoft YaHei Vet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 2,
+        "value": "Halvfet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 4,
+        "value": "Microsoft YaHei Halvfet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 2,
+        "value": "Pogrubiony"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 4,
+        "value": "Microsoft YaHei Pogrubiony"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 2,
+        "value": "Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 4,
+        "value": "Microsoft YaHei Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 2,
+        "value": "Полужирный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 4,
+        "value": "Microsoft YaHei Полужирный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 2,
+        "value": "Tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 4,
+        "value": "Microsoft YaHei Tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 2,
+        "value": "Fet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 4,
+        "value": "Microsoft YaHei Fet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 2,
+        "value": "Kalın"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 4,
+        "value": "Microsoft YaHei Kalın"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 2,
+        "value": "Krepko"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 4,
+        "value": "Microsoft YaHei Krepko"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 2,
+        "value": "Lodia"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 4,
+        "value": "Microsoft YaHei Lodia"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "微软雅黑"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "微软雅黑-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "微软雅黑 Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "MicrosoftYaHei-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 2,
+        "value": "Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 4,
+        "value": "Microsoft YaHei Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 2,
+        "value": "Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 4,
+        "value": "Microsoft YaHei Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 2,
+        "value": "Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 4,
+        "value": "Microsoft YaHei Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 2,
+        "value": "Gras"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 4,
+        "value": "Microsoft YaHei Gras"
+      }
+    ]
+  },
+  "BoldUI": {
+    "weight": 700,
+    "records": [
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 2,
+        "value": "Negreta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Negreta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 2,
+        "value": "tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 2,
+        "value": "fed"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI fed"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 2,
+        "value": "Fett"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Fett"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 2,
+        "value": "Έντονα"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Έντονα"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Microsoft YaHei UI-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiUI-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 2,
+        "value": "Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 2,
+        "value": "Lihavoitu"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Lihavoitu"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 2,
+        "value": "Gras"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Gras"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 2,
+        "value": "Félkövér"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Félkövér"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 2,
+        "value": "Grassetto"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Grassetto"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 2,
+        "value": "Vet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Vet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 2,
+        "value": "Halvfet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Halvfet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 2,
+        "value": "Pogrubiony"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Pogrubiony"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 2,
+        "value": "Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 2,
+        "value": "Полужирный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Полужирный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 2,
+        "value": "Tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Tučné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 2,
+        "value": "Fet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Fet"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 2,
+        "value": "Kalın"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Kalın"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 2,
+        "value": "Krepko"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Krepko"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 2,
+        "value": "Lodia"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Lodia"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "Microsoft YaHei UI Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "Microsoft Yahei UI Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiUI-Bold"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 2,
+        "value": "Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 2,
+        "value": "Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Negrito"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 2,
+        "value": "Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Negrita"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 2,
+        "value": "Gras"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Gras"
+      }
+    ]
+  },
+  "Light": {
+    "weight": 300,
+    "records": [
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Microsoft YaHei Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Microsoft YaHei Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Microsoft YaHei Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiLight"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 16,
+        "value": "Microsoft YaHei"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 17,
+        "value": "Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "微软雅黑 Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "微软雅黑 Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "微软雅黑 Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "微软雅黑 Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 16,
+        "value": "微软雅黑"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 17,
+        "value": "Light"
+      }
+    ]
+  },
+  "LightUI": {
+    "weight": 300,
+    "records": [
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Microsoft YaHei UI Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Microsoft YaHei UI Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiUILight"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 16,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 17,
+        "value": "Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "Microsoft YaHei UI Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "Microsoft YaHei UI Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "Microsoft YaHei UI Light"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "MicrosoftYaHeiUILight"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 16,
+        "value": "Microsoft YaHei UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 17,
+        "value": "Light"
+      }
+    ]
+  },
+  "SimSun": {
+    "weight": 400,
+    "records": [
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 1,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 3,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 4,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 6,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "SimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "常规"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 1,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 2,
+        "value": "常规"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 3,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 4,
+        "value": "宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 6,
+        "value": "宋体"
+      }
+    ]
+  },
+  "NSimSun": {
+    "weight": 400,
+    "records": [
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 1,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 3,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 4,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 6,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "NSimSun"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 1,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 2,
+        "value": "常规"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 3,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 4,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2052,
+        "name_id": 6,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 1,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 2,
+        "value": "常规"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 3,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 4,
+        "value": "新宋体"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 4100,
+        "name_id": 6,
+        "value": "新宋体"
+      }
+    ]
+  },
+  "SimSunExtB": {
+    "weight": 400,
+    "records": [
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 1,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 3,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 4,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 1,
+        "encoding_id": 0,
+        "language_id": 0,
+        "name_id": 6,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 2,
+        "value": "obyčejné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 2,
+        "value": "normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 2,
+        "value": "Standard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 2,
+        "value": "Κανονικά"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "SimSun-ExtB"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 2,
+        "value": "Normaali"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 2,
+        "value": "Normál"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 2,
+        "value": "Normale"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 2,
+        "value": "Standaard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 2,
+        "value": "Normalny"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 2,
+        "value": "Обычный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 2,
+        "value": "Normálne"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 2,
+        "value": "Navadno"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 2,
+        "value": "Arrunta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 2,
+        "value": "Normal"
+      }
+    ]
+  },
+  "SegoeUIRegular": {
+    "weight": 400,
+    "records": [
+      {
+        "platform_id": 0,
+        "encoding_id": 3,
+        "language_id": 0,
+        "name_id": 1,
+        "value": "Segoe UI"
+      },
+      {
+        "platform_id": 0,
+        "encoding_id": 3,
+        "language_id": 0,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 0,
+        "encoding_id": 3,
+        "language_id": 0,
+        "name_id": 3,
+        "value": "Segoe UI Regular"
+      },
+      {
+        "platform_id": 0,
+        "encoding_id": 3,
+        "language_id": 0,
+        "name_id": 4,
+        "value": "Segoe UI"
+      },
+      {
+        "platform_id": 0,
+        "encoding_id": 3,
+        "language_id": 0,
+        "name_id": 6,
+        "value": "SegoeUI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1027,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1029,
+        "name_id": 2,
+        "value": "obyčejné"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1030,
+        "name_id": 2,
+        "value": "normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1031,
+        "name_id": 2,
+        "value": "Standard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1032,
+        "name_id": 2,
+        "value": "Κανονικά"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 1,
+        "value": "Segoe UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 2,
+        "value": "Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 3,
+        "value": "Segoe UI Regular"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 4,
+        "value": "Segoe UI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1033,
+        "name_id": 6,
+        "value": "SegoeUI"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1034,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1035,
+        "name_id": 2,
+        "value": "Normaali"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1036,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1038,
+        "name_id": 2,
+        "value": "Normál"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1040,
+        "name_id": 2,
+        "value": "Normale"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1043,
+        "name_id": 2,
+        "value": "Standaard"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1044,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1045,
+        "name_id": 2,
+        "value": "Normalny"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1046,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1049,
+        "name_id": 2,
+        "value": "Обычный"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1051,
+        "name_id": 2,
+        "value": "Normálne"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1053,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1055,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1060,
+        "name_id": 2,
+        "value": "Navadno"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 1069,
+        "name_id": 2,
+        "value": "Arrunta"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2058,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 2070,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3082,
+        "name_id": 2,
+        "value": "Normal"
+      },
+      {
+        "platform_id": 3,
+        "encoding_id": 1,
+        "language_id": 3084,
+        "name_id": 2,
+        "value": "Normal"
+      }
+    ]
+  }
+}
