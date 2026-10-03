@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雅黑更纱</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>雅黑更纱</h1>
+    <p>把别的字体伪装成微软雅黑，生成可直接替换系统字体的文件</p>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="功能">
+    <button role="tab" data-tab="presets" aria-selected="true">Sarasa 预设</button>
+    <button role="tab" data-tab="custom" aria-selected="false">自定义字体</button>
+    <button role="tab" data-tab="system" aria-selected="false">系统字体</button>
+    <button role="tab" data-tab="settings" aria-selected="false">设置</button>
+  </nav>
+</header>
+
+<div class="layout">
+  <main>
+    <!-- Presets ------------------------------------------------------------>
+    <section class="panel" data-panel="presets" role="tabpanel">
+      <h2 class="visually-hidden">Sarasa 预设</h2>
+      <div class="matrix-wrap">
+        <table class="matrix" id="matrix">
+          <colgroup><col class="c-name"><col><col></colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="corner">Windows 看到的字体，与实际使用的 Sarasa UI SC 字重</th>
+              <th scope="col" id="col-semibold"></th>
+              <th scope="col" id="col-regular"></th>
+            </tr>
+          </thead>
+          <tbody id="matrix-body"></tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td><button class="primary big" data-preset="semibold">生成 SemiBold 版</button></td>
+              <td><button class="primary big" data-preset="regular">生成标准版</button></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p class="legend"><span class="mark-swatch"></span>标出的是两版唯一的区别：正文 400 用哪种字重。其余处理完全一致，名称、字重、fsSelection 都取自 Windows 11 原版字体。</p>
+      <p class="source-line" id="source-line"></p>
+    </section>
+
+    <!-- Custom -------------------------------------------------------------->
+    <section class="panel" data-panel="custom" role="tabpanel" hidden>
+      <h2>用自己的字体</h2>
+      <p class="lede">按两个 Sarasa 预设的做法，把你的字体分配到微软雅黑各字重、宋体和 Segoe UI 上。字形原样保留，只换身份。请确认字体授权允许修改。</p>
+
+      <div class="dropzone" id="dropzone">
+        <div>
+          <strong>把字体文件拖到这里</strong>
+          <span>支持 TTF、OTF、TTC/OTC、WOFF，可一次放多个字重</span>
+        </div>
+        <div class="dz-actions">
+          <button id="pick-fonts">选择字体文件…</button>
+          <label class="path-add"><span class="visually-hidden">字体路径</span><input id="font-path" placeholder="或粘贴文件路径后回车"></label>
+        </div>
+      </div>
+      <div id="font-errors"></div>
+      <div id="font-list"></div>
+
+      <div id="plan" hidden>
+        <h3>正文风格</h3>
+        <div class="segmented" role="radiogroup" aria-label="正文风格">
+          <button role="radio" data-style="regular" aria-checked="true">
+            <strong>标准</strong><span>正文 400 用最接近 400 的字重，同标准版</span>
+          </button>
+          <button role="radio" data-style="semibold" aria-checked="false">
+            <strong>SemiBold</strong><span>正文 400 用最接近 600 的字重，同 SemiBold 版</span>
+          </button>
+        </div>
+
+        <h3>字体分配</h3>
+        <table class="slots">
+          <colgroup><col class="c-slot"><col class="c-use"><col></colgroup>
+          <thead><tr><th scope="col">Windows 字体</th><th scope="col">使用</th><th scope="col">检查结果</th></tr></thead>
+          <tbody id="slot-body"></tbody>
+        </table>
+        <div id="plan-issues"></div>
+
+        <h3>要生成的文件</h3>
+        <div class="outputs" id="outputs"></div>
+
+        <details class="face-notes" id="face-notes" hidden>
+          <summary>字体本身的情况与自动修正</summary>
+          <div id="face-notes-body"></div>
+        </details>
+
+        <div class="build-row">
+          <button class="primary big" id="build-custom">生成自定义字体包</button>
+          <p id="build-blocked" class="blocked"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- System -------------------------------------------------------------->
+    <section class="panel" data-panel="system" role="tabpanel" hidden>
+      <h2>当前系统字体</h2>
+      <p class="lede">替换前先备份这 6 个文件。状态由文件哈希和字体内的版权信息判断：与金标准哈希一致即为 Windows 11 原版。</p>
+      <div id="system-body"></div>
+    </section>
+
+    <!-- Settings ------------------------------------------------------------>
+    <section class="panel" data-panel="settings" role="tabpanel" hidden>
+      <h2>设置</h2>
+      <form id="settings" class="settings" autocomplete="off">
+        <fieldset>
+          <legend>Sarasa 来源</legend>
+          <label class="radio"><input type="radio" name="useLocal" value="false"> 自动从 GitHub 下载（只分段取需要的 4 个文件，约 55 MiB）</label>
+          <label class="radio"><input type="radio" name="useLocal" value="true"> 使用本地文件夹或 SarasaUi-TTF-*.zip</label>
+          <div class="row indent">
+            <input name="sarasaLocal" placeholder="D:\Sarasa 或 D:\SarasaUi-TTF-1.0.42.zip">
+            <button type="button" data-pick="sarasa-folder">文件夹…</button>
+            <button type="button" data-pick="sarasa-zip">压缩包…</button>
+          </div>
+          <label class="check"><input type="checkbox" name="hinted"> 使用 hinted 版（GDI 小字号更清晰，默认）</label>
+          <label class="field">Sarasa 版本
+            <input name="version" placeholder="留空 = 最新版，例如 1.0.42">
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>输出</legend>
+          <label class="field">输出文件夹
+            <span class="row"><input name="outRoot"><button type="button" data-pick="output">选择…</button></span>
+          </label>
+          <label class="check"><input type="checkbox" name="zip"> 另外打包成 ZIP</label>
+        </fieldset>
+        <fieldset>
+          <legend>网络</legend>
+          <label class="radio"><input type="radio" name="proxyMode" value="auto"> 自动（环境变量，其次是系统代理 <span id="sys-proxy"></span>）</label>
+          <label class="radio"><input type="radio" name="proxyMode" value="direct"> 直连</label>
+          <label class="radio"><input type="radio" name="proxyMode" value="custom"> 指定代理</label>
+          <div class="row indent"><input name="proxy" placeholder="http://127.0.0.1:7890 或 socks5://127.0.0.1:1080"></div>
+          <label class="field">下载镜像前缀（可选）
+            <input name="mirror" placeholder="例如 https://ghfast.top/">
+          </label>
+        </fieldset>
+        <p class="saved" id="settings-status" aria-live="polite"></p>
+      </form>
+      <div class="about" id="about"></div>
+    </section>
+  </main>
+
+  <aside class="activity" aria-label="运行记录">
+    <div class="activity-head">
+      <h2>运行记录</h2>
+      <button class="ghost" id="cancel" hidden>取消</button>
+    </div>
+    <div id="job"></div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

@@ -93,6 +93,18 @@ func (f *Font) SetClearTypeOptimized() error {
 	return nil
 }
 
+// SetMacStyle overwrites head.macStyle. Used only by custom-font builds.
+func (f *Font) SetMacStyle(macStyle uint16) error {
+	t, ok := f.Tables["head"]
+	if !ok || len(t) < 46 {
+		return errors.New("sfnt: missing/truncated head table for macStyle")
+	}
+	t = bytes.Clone(t)
+	be.PutUint16(t[44:46], macStyle)
+	f.Tables["head"] = t
+	return nil
+}
+
 func (f *Font) PrepareCommon(weight, fsSelection uint16) error {
 	// D2 starts from C1 and still preserves Sarasa gasp. Existing faces keep
 	// their C1 fsSelection values; the added 600 SemiBold faces use the D2 WWS

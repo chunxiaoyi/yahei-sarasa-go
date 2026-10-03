@@ -3,7 +3,7 @@ package otfont
 import (
 	"fmt"
 
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/config"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/config"
 )
 
 // VerifySpec enforces the compatibility contract: Windows 11 identity records
@@ -27,7 +27,7 @@ func VerifySpec(f *Font, spec config.FontSpec) error {
 	if err != nil {
 		return err
 	}
-	wantCount := len(spec.Identity) + 2
+	wantCount := len(spec.Identity) + 2 + len(spec.ExtraNames)
 	if len(recs) != wantCount {
 		return fmt.Errorf("verify: name record count=%d, want %d", len(recs), wantCount)
 	}
@@ -45,11 +45,21 @@ func VerifySpec(f *Font, spec config.FontSpec) error {
 				want.PlatformID, want.EncodingID, want.LanguageID, want.NameID, want.Value)
 		}
 	}
-	if !hasName(recs, platformWindows, encodingUnicodeBMP, langEnglishUS, 0, config.Copyright) {
+	if !hasName(recs, platformWindows, encodingUnicodeBMP, langEnglishUS, 0, specCopyright(spec)) {
 		return fmt.Errorf("verify: project copyright record missing")
 	}
 	if !hasName(recs, platformWindows, encodingUnicodeBMP, langEnglishUS, 5, spec.Version) {
 		return fmt.Errorf("verify: source version record missing")
+	}
+	for _, want := range spec.ExtraNames {
+		if !hasName(recs, want.PlatformID, want.EncodingID, want.LanguageID, want.NameID, want.Value) {
+			return fmt.Errorf("verify: extra name record id=%d missing", want.NameID)
+		}
+	}
+	if spec.MacStyle != nil {
+		if len(head) < 46 || be.Uint16(head[44:46]) != *spec.MacStyle {
+			return fmt.Errorf("verify: head.macStyle != %#04x", *spec.MacStyle)
+		}
 	}
 	return nil
 }

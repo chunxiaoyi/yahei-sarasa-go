@@ -1,3 +1,3 @@
-module github.com/chunxiaoyi/yahei-sarasa-semibold-go
+module github.com/chunxiaoyi/yahei-sarasa-go
 
 go 1.22

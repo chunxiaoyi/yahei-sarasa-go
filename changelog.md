@@ -1,3 +1,20 @@
+# yahei-sarasa-go — v2.0
+
+> **两个分支合并成一个程序的两个预设，并加上图形界面与自定义字体。** 原 main（D4）与原 regular（D4-Regular）的处理逻辑原样保留，生成文件逐字节一致。D4 的完整实验记录保留在下方。
+
+## 变化
+
+- **图形界面**：双击 `YaHeiSarasa.exe`。两个预设按钮（SemiBold 版 = 原 main，标准版 = 原 regular），一键下载、生成、校验、打包。界面是程序内置的本地网页，用系统自带的 Edge 以应用窗口显示，文件选择用 Windows 原生对话框。
+- **自定义字体**：TTF / OTF / TTC / OTC / WOFF；按两个预设的规则自动分配字重，可手动调整；生成前体检并解释每个风险，阻止会让中文界面缺字的组合；对常见问题自动修正（只作用于自定义字体）。
+- **打包**：`fonts/` + `manifest.json` + `SHA256SUMS.txt` + `安装说明.txt`，可选 zip。
+- **系统字体页**：查看 6 个目标文件是 Win11 原版（与金标准哈希一致）、本工具生成还是其他替换，一键备份并校验。
+- **下载**：Sarasa 缓存（第二个预设不再联网）；GitHub API 限流时改走网页地址；Range 请求失败自动重试；解压先写临时文件再改名；支持系统代理、指定代理和镜像前缀；也可以直接用本地 SarasaUi-TTF-*.zip。
+- **命令行**：旧用法不变（`-preset` 默认 semibold）；新增 `build -out/-zip/-cache`、`custom`、`inspect`。
+- **验证**：两个原分支的输出哈希写入回归测试；`tools/validate_fonts.py` 用 fontTools 独立复核。
+- Go 模块路径改为 `github.com/chunxiaoyi/yahei-sarasa-go`（与仓库名一致）。
+
+---
+
 # yahei-sarasa-semibold-go — D4
 
 > **D4 严格从 D2 分支。** D2 已验证解决 WinUI `600 -> Bold 700` 的问题；D4 只继续解决正文中 `Segoe UI Regular 400` 截走英文/数字、导致中英文混排风格不一致的问题。

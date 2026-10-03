@@ -1,0 +1,125 @@
+{
+  "_comment": "Byte-for-byte outputs of the original D4 (main @ b9aa06c) and D4-Regular (regular @ ee9e874) programs, generated with -source-dir from the listed Sarasa UI SC sources. internal/recipe regression tests compare both presets against these.",
+  "cases": [
+    {
+      "sarasa": "1.0.42",
+      "package": "SarasaUi-TTF-1.0.42.zip",
+      "preset": "semibold",
+      "branch": "main",
+      "sources": {
+        "SarasaUiSC-Bold.ttf": "b3e6ef6ce5df339d103fcfa9a146d8338c67eb48333308397861d97b4408aca9",
+        "SarasaUiSC-Light.ttf": "aa35816491632974825a69e64ef6d06e32ccf141f6bb3c3c3dc2119652d60aa5",
+        "SarasaUiSC-Regular.ttf": "81fc5857cbc9b05a16a75c7ad3e848032df52dddd29192f14b48d4b449c973f7",
+        "SarasaUiSC-SemiBold.ttf": "1e11a0a06f4eb8f3256858b6ae085ea0b5c5eef9e216f153e152b868d741ae62"
+      },
+      "outputs": {
+        "msyh.ttc": "6312d9e23f30e48002b1a6a19cc5e79bd7b8a80541684c096982bb64e0364d81",
+        "msyhbd.ttc": "04ecdc60ae57c3713510d3d82b68af9c7e9f8c59b580311b248152ff2760794f",
+        "msyhl.ttc": "6fd6ef346efdef72430cbaf8bb1bc88ed52eaf2947f81a515d1c1b5b380b9f75",
+        "segoeui.ttf": "e4f56a14ff4079d791760c9c3b2f9058b0ce4b3c9dfb7f9a6817be88bdda866e",
+        "simsun.ttc": "e65858cbeaaf81c6507e72d3538a1ae17acfb8c1122ddc444844e3a813bb03d2",
+        "simsunb.ttf": "b4a14b38d613e04139c8a1d3465932a349c01d9f1450e3c609cc51f8bc12bc93"
+      }
+    },
+    {
+      "sarasa": "1.0.42",
+      "package": "SarasaUi-TTF-1.0.42.zip",
+      "preset": "regular",
+      "branch": "regular",
+      "sources": {
+        "SarasaUiSC-Bold.ttf": "b3e6ef6ce5df339d103fcfa9a146d8338c67eb48333308397861d97b4408aca9",
+        "SarasaUiSC-Light.ttf": "aa35816491632974825a69e64ef6d06e32ccf141f6bb3c3c3dc2119652d60aa5",
+        "SarasaUiSC-Regular.ttf": "81fc5857cbc9b05a16a75c7ad3e848032df52dddd29192f14b48d4b449c973f7",
+        "SarasaUiSC-SemiBold.ttf": "1e11a0a06f4eb8f3256858b6ae085ea0b5c5eef9e216f153e152b868d741ae62"
+      },
+      "outputs": {
+        "msyh.ttc": "44aca44f7e4d8e8e85377a195f918fb81bbafb98c06104c691ea6e28353428df",
+        "msyhbd.ttc": "04ecdc60ae57c3713510d3d82b68af9c7e9f8c59b580311b248152ff2760794f",
+        "msyhl.ttc": "6fd6ef346efdef72430cbaf8bb1bc88ed52eaf2947f81a515d1c1b5b380b9f75",
+        "segoeui.ttf": "458304a74f5e7b085b7fdeb3044a27cef93c94eba7b57a121225efa94c0ad71b",
+        "simsun.ttc": "e65858cbeaaf81c6507e72d3538a1ae17acfb8c1122ddc444844e3a813bb03d2",
+        "simsunb.ttf": "b4a14b38d613e04139c8a1d3465932a349c01d9f1450e3c609cc51f8bc12bc93"
+      }
+    },
+    {
+      "sarasa": "1.0.42",
+      "package": "SarasaUi-TTF-Unhinted-1.0.42.zip",
+      "preset": "semibold",
+      "branch": "main",
+      "sources": {
+        "SarasaUiSC-Bold.ttf": "bce02524045c31db78261a6c67f047d631e40754155c4b87d5acd82728d643e3",
+        "SarasaUiSC-Light.ttf": "2468d996a9bd9fd2bd81a0ee933429df3e628e3ff471dbef44e9f72a878bace4",
+        "SarasaUiSC-Regular.ttf": "812eed1d25d6599bf83e811d705635900ae7b458dee93ef61bf437c6afe74a99",
+        "SarasaUiSC-SemiBold.ttf": "b5dcd89ff56f817938ab4833dbfb63c75b3a04fca74f1dc4d0d28b60f6e2f76b"
+      },
+      "outputs": {
+        "msyh.ttc": "abd53f6a99d98338a2ceee391ac76c808422a8ede5224fa0c27792b5e605703a",
+        "msyhbd.ttc": "361b25f23718b6b9fa4adcbb89fd1a75a5095bff319fc0f5e518bf2238ea8d26",
+        "msyhl.ttc": "eba5db11a5a5a64de759a8fc559743323202b2417aae894a62894483ee1dc264",
+        "segoeui.ttf": "64be4768c4caff77c40f642d1f9165a89cc7f03df698b29e3ec9cf825ef31693",
+        "simsun.ttc": "6b7f692fd382cb0a2fb72f000caffbbb946a0f3950e62e707536207e67b0cd04",
+        "simsunb.ttf": "27bee5249d7f27e953248e6af7580909638c00c511ebeedd2acdeb0ef197a210"
+      }
+    },
+    {
+      "sarasa": "1.0.42",
+      "package": "SarasaUi-TTF-Unhinted-1.0.42.zip",
+      "preset": "regular",
+      "branch": "regular",
+      "sources": {
+        "SarasaUiSC-Bold.ttf": "bce02524045c31db78261a6c67f047d631e40754155c4b87d5acd82728d643e3",
+        "SarasaUiSC-Light.ttf": "2468d996a9bd9fd2bd81a0ee933429df3e628e3ff471dbef44e9f72a878bace4",
+        "SarasaUiSC-Regular.ttf": "812eed1d25d6599bf83e811d705635900ae7b458dee93ef61bf437c6afe74a99",
+        "SarasaUiSC-SemiBold.ttf": "b5dcd89ff56f817938ab4833dbfb63c75b3a04fca74f1dc4d0d28b60f6e2f76b"
+      },
+      "outputs": {
+        "msyh.ttc": "9c07ed8aa7bab303f8f21f0d1d6631da048647a9356498dc18c33965516b48c3",
+        "msyhbd.ttc": "361b25f23718b6b9fa4adcbb89fd1a75a5095bff319fc0f5e518bf2238ea8d26",
+        "msyhl.ttc": "eba5db11a5a5a64de759a8fc559743323202b2417aae894a62894483ee1dc264",
+        "segoeui.ttf": "232d8579b6b46ba20f134d300413da04cbaaa52f102629cc56c5f222fbeeb61a",
+        "simsun.ttc": "6b7f692fd382cb0a2fb72f000caffbbb946a0f3950e62e707536207e67b0cd04",
+        "simsunb.ttf": "27bee5249d7f27e953248e6af7580909638c00c511ebeedd2acdeb0ef197a210"
+      }
+    },
+    {
+      "sarasa": "synthetic",
+      "package": "testdata/synthetic",
+      "preset": "semibold",
+      "branch": "main",
+      "sources": {
+        "SarasaUiSC-Bold.ttf": "91ade31dcb6ac5f54685a33a15c02e9ce81d5c4c1ebbaa036dd3ba35dfe71195",
+        "SarasaUiSC-Light.ttf": "dee4de67b0f0ccabaae4487e72a1027a4a1c2600077d149e7d2892603c34cf2f",
+        "SarasaUiSC-Regular.ttf": "0397605f0776c54ee86e25d60936f2ad17a128572efa828e31a51e93fdbfbe49",
+        "SarasaUiSC-SemiBold.ttf": "52842174fb5404c2fa006eac1837766c72c98565f848b085e9d3e36cd8e52f8a"
+      },
+      "outputs": {
+        "msyh.ttc": "d78a1f2a5fc0533156edb04ccbffd682c496e2e950686f81efba0b4b58090a13",
+        "msyhbd.ttc": "0b9c6f668274463e407c12bcb307ccb048aff90425bcb890165c7c887d1055f6",
+        "msyhl.ttc": "6eded6271638e0a2a9bedcc2ef6ebc12deb126643c17d66737523ae2f489be35",
+        "segoeui.ttf": "088c8c389c077baccdc996c8dad5e52d94cf987d78f4261d538f4cb7f225fe28",
+        "simsun.ttc": "69939c458bd94db29714fa7e806e83d43ea5e5853d49913a067c3717ffe40a39",
+        "simsunb.ttf": "fe9e31c3d061344f8cc2ef5b119a3d09cdfcf70826fc381e490e53296f1f8d80"
+      }
+    },
+    {
+      "sarasa": "synthetic",
+      "package": "testdata/synthetic",
+      "preset": "regular",
+      "branch": "regular",
+      "sources": {
+        "SarasaUiSC-Bold.ttf": "91ade31dcb6ac5f54685a33a15c02e9ce81d5c4c1ebbaa036dd3ba35dfe71195",
+        "SarasaUiSC-Light.ttf": "dee4de67b0f0ccabaae4487e72a1027a4a1c2600077d149e7d2892603c34cf2f",
+        "SarasaUiSC-Regular.ttf": "0397605f0776c54ee86e25d60936f2ad17a128572efa828e31a51e93fdbfbe49",
+        "SarasaUiSC-SemiBold.ttf": "52842174fb5404c2fa006eac1837766c72c98565f848b085e9d3e36cd8e52f8a"
+      },
+      "outputs": {
+        "msyh.ttc": "6d258ef77d0f5650f3417823c61d78f7ffb8f17a72eba0092dce972776dd386f",
+        "msyhbd.ttc": "0b9c6f668274463e407c12bcb307ccb048aff90425bcb890165c7c887d1055f6",
+        "msyhl.ttc": "6eded6271638e0a2a9bedcc2ef6ebc12deb126643c17d66737523ae2f489be35",
+        "segoeui.ttf": "2dc3a598670ed903a1ff6c0ab7ec3b8f71dae4410d12f214af7f5d0dc7620042",
+        "simsun.ttc": "69939c458bd94db29714fa7e806e83d43ea5e5853d49913a067c3717ffe40a39",
+        "simsunb.ttf": "fe9e31c3d061344f8cc2ef5b119a3d09cdfcf70826fc381e490e53296f1f8d80"
+      }
+    }
+  ]
+}

@@ -14,11 +14,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
 )
 
 const (
 	defaultBlockSize = int64(2 << 20) // 2 MiB HTTP range blocks
 	defaultMaxBlocks = 12             // ~24 MiB cache
+	rangeAttempts    = 4              // per block, with backoff
+	userAgent        = "yahei-sarasa-go"
 )
 
 type cacheBlock struct {
@@ -111,27 +115,9 @@ func (r *ReaderAt) getBlock(index int64) ([]byte, error) {
 		end = r.size - 1
 	}
 
-	req, err := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
+	data, err := r.fetchRange(start, end)
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
-	req.Header.Set("User-Agent", "yahei-sarasa-semibold-go")
-	resp, err := r.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusPartialContent {
-		return nil, fmt.Errorf("remotezip: server ignored byte range %d-%d: %s", start, end, resp.Status)
-	}
-	wantLen := end - start + 1
-	data, err := io.ReadAll(io.LimitReader(resp.Body, wantLen+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(data)) != wantLen {
-		return nil, fmt.Errorf("remotezip: short range %d-%d: got %d bytes want %d", start, end, len(data), wantLen)
 	}
 
 	r.mu.Lock()
@@ -143,6 +129,65 @@ func (r *ReaderAt) getBlock(index int64) ([]byte, error) {
 	}
 	r.mu.Unlock()
 	return data, nil
+}
+
+// fetchRange GETs bytes [start,end] with bounded retries. Transient network
+// failures and 5xx/429 answers are retried with backoff; a server that ignores
+// Range is a hard error because silently reading a full 700 MiB body is what
+// this package exists to avoid.
+func (r *ReaderAt) fetchRange(start, end int64) ([]byte, error) {
+	var lastErr error
+	for attempt := 0; attempt < rangeAttempts; attempt++ {
+		if attempt > 0 {
+			delay := time.Duration(attempt*attempt) * 700 * time.Millisecond
+			select {
+			case <-r.ctx.Done():
+				return nil, r.ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+		data, retry, err := r.fetchRangeOnce(start, end)
+		if err == nil {
+			return data, nil
+		}
+		lastErr = err
+		if !retry || r.ctx.Err() != nil {
+			break
+		}
+	}
+	if r.ctx.Err() != nil {
+		return nil, r.ctx.Err()
+	}
+	return nil, lastErr
+}
+
+func (r *ReaderAt) fetchRangeOnce(start, end int64) (data []byte, retry bool, err error) {
+	req, err := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end))
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return nil, true, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+		return nil, true, fmt.Errorf("remotezip: range %d-%d: %s", start, end, resp.Status)
+	}
+	if resp.StatusCode != http.StatusPartialContent {
+		return nil, false, fmt.Errorf("remotezip: server ignored byte range %d-%d: %s", start, end, resp.Status)
+	}
+	wantLen := end - start + 1
+	data, err = io.ReadAll(io.LimitReader(resp.Body, wantLen+1))
+	if err != nil {
+		return nil, true, err
+	}
+	if int64(len(data)) != wantLen {
+		return nil, true, fmt.Errorf("remotezip: short range %d-%d: got %d bytes want %d", start, end, len(data), wantLen)
+	}
+	return data, false, nil
 }
 
 func (r *ReaderAt) evictOneLocked(keep int64) {
@@ -163,7 +208,7 @@ func (r *ReaderAt) evictOneLocked(keep int64) {
 }
 
 // ExtractSelected fetches only ZIP ranges required for requested basenames.
-func ExtractSelected(ctx context.Context, client *http.Client, url string, size int64, dst string, wanted []string) (int64, error) {
+func ExtractSelected(ctx context.Context, client *http.Client, url string, size int64, dst string, wanted []string, sink progress.Sink) (int64, error) {
 	ra, err := NewReaderAt(ctx, client, url, size)
 	if err != nil {
 		return 0, err
@@ -172,22 +217,37 @@ func ExtractSelected(ctx context.Context, client *http.Client, url string, size 
 	if err != nil {
 		return ra.BytesFetched(), fmt.Errorf("remotezip: open central directory: %w", err)
 	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return ra.BytesFetched(), err
-	}
+	err = extractFrom(zr.File, dst, wanted, sink)
+	return ra.BytesFetched(), err
+}
 
+// ExtractLocal extracts the requested basenames from a ZIP on disk (for a
+// Sarasa package the user downloaded with a browser).
+func ExtractLocal(zipPath, dst string, wanted []string, sink progress.Sink) error {
+	zr, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+	return extractFrom(zr.File, dst, wanted, sink)
+}
+
+func extractFrom(files []*zip.File, dst string, wanted []string, sink progress.Sink) error {
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return err
+	}
 	need := make(map[string]bool, len(wanted))
 	for _, n := range wanted {
 		need[n] = true
 	}
-	for _, zf := range zr.File {
+	for _, zf := range files {
 		base := filepath.Base(filepath.FromSlash(zf.Name))
 		if !need[base] || zf.FileInfo().IsDir() {
 			continue
 		}
-		fmt.Printf("========> Extracting %-28s %6.1f MiB\n", base, float64(zf.UncompressedSize64)/(1<<20))
-		if err := extractOne(zf, filepath.Join(dst, base)); err != nil {
-			return ra.BytesFetched(), err
+		sink.Infof("正在解出 %s（%.1f MiB）", base, float64(zf.UncompressedSize64)/(1<<20))
+		if err := extractOne(zf, filepath.Join(dst, base), sink); err != nil {
+			return err
 		}
 		delete(need, base)
 		if len(need) == 0 {
@@ -200,18 +260,22 @@ func ExtractSelected(ctx context.Context, client *http.Client, url string, size 
 			missing = append(missing, n)
 		}
 		sort.Strings(missing)
-		return ra.BytesFetched(), fmt.Errorf("remotezip: archive missing requested files: %v", missing)
+		return fmt.Errorf("remotezip: archive missing requested files: %v", missing)
 	}
-	return ra.BytesFetched(), nil
+	return nil
 }
 
-func extractOne(zf *zip.File, path string) error {
+// extractOne writes to a temporary sibling and renames on success, so an
+// interrupted download never leaves a truncated font in the cache. The zip
+// reader verifies CRC-32 at EOF, so a renamed file is a verified copy.
+func extractOne(zf *zip.File, path string, sink progress.Sink) error {
 	rc, err := zf.Open()
 	if err != nil {
 		return err
 	}
 	defer rc.Close()
-	out, err := os.Create(path)
+	tmp := path + ".part"
+	out, err := os.Create(tmp)
 	if err != nil {
 		return err
 	}
@@ -219,17 +283,20 @@ func extractOne(zf *zip.File, path string) error {
 	defer func() {
 		_ = out.Close()
 		if !ok {
-			_ = os.Remove(path)
+			_ = os.Remove(tmp)
 		}
 	}()
-	pw := &progressWriter{name: filepath.Base(path), total: int64(zf.UncompressedSize64), lastAt: time.Now()}
+	pw := &progressWriter{name: filepath.Base(path), total: int64(zf.UncompressedSize64), sink: sink}
 	if _, err := io.Copy(io.MultiWriter(out, pw), rc); err != nil {
 		return err
 	}
 	if err := out.Close(); err != nil {
 		return err
 	}
-	fmt.Println()
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	pw.finish()
 	ok = true
 	return nil
 }
@@ -237,22 +304,20 @@ func extractOne(zf *zip.File, path string) error {
 type progressWriter struct {
 	name        string
 	total, done int64
-	last        int
 	lastAt      time.Time
+	sink        progress.Sink
 }
 
 func (p *progressWriter) Write(b []byte) (int, error) {
 	p.done += int64(len(b))
-	percent := 0
-	if p.total > 0 {
-		percent = int(p.done * 100 / p.total)
-	}
-	if percent >= p.last+10 || time.Since(p.lastAt) > 2*time.Second || p.done == p.total {
-		fmt.Printf("\r           %-28s %3d%%", p.name, percent)
-		p.last, p.lastAt = percent, time.Now()
+	if time.Since(p.lastAt) > 200*time.Millisecond {
+		p.sink.Progress(p.name, p.done, p.total)
+		p.lastAt = time.Now()
 	}
 	return len(b), nil
 }
+
+func (p *progressWriter) finish() { p.sink.Progress(p.name, p.total, p.total) }
 
 // ProbeSize can be used for explicit URLs. It prefers HEAD, then a 0-0 range.
 func ProbeSize(ctx context.Context, client *http.Client, url string) (int64, error) {
@@ -260,7 +325,7 @@ func ProbeSize(ctx context.Context, client *http.Client, url string) (int64, err
 		client = http.DefaultClient
 	}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
-	req.Header.Set("User-Agent", "yahei-sarasa-semibold-go")
+	req.Header.Set("User-Agent", userAgent)
 	if resp, err := client.Do(req); err == nil {
 		_ = resp.Body.Close()
 		if resp.ContentLength > 0 {
@@ -269,7 +334,7 @@ func ProbeSize(ctx context.Context, client *http.Client, url string) (int64, err
 	}
 	req, _ = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	req.Header.Set("Range", "bytes=0-0")
-	req.Header.Set("User-Agent", "yahei-sarasa-semibold-go")
+	req.Header.Set("User-Agent", userAgent)
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, err
