@@ -6,17 +6,11 @@ import (
 	"fmt"
 )
 
-const (
-	// These source selections intentionally preserve the original project:
-	// Sarasa UI SC SemiBold is exposed to Windows as YaHei Regular.
-	RegularSource = "SarasaUiSC-SemiBold"
-	BoldSource    = "SarasaUiSC-Bold"
-	LightSource   = "SarasaUiSC-Light"
-	SimSunSource  = "SarasaUiSC-SemiBold"
-
-	// The original Python project explicitly overwrites the font copyright.
-	Copyright = "Made from sarasa by GPT"
-)
+// Copyright is the project-controlled name ID 0 used by both Sarasa presets.
+// The original Python project explicitly overwrites the font copyright, and
+// both validated branches (main / regular) keep that behaviour byte-for-byte.
+// Custom-font builds override it per source (see FontSpec.Copyright).
+const Copyright = "Made from sarasa by GPT"
 
 // NameRecord is one raw OpenType name-table identity record extracted from the
 // official Windows 11 fonts supplied as the project's compatibility goldens.
@@ -43,6 +37,19 @@ type FontSpec struct {
 	FSSelection uint16
 	Version     string
 	Identity    []NameRecord
+
+	// Copyright is written as Windows en-US name ID 0. Every constructor in
+	// this package sets it to the project value above; only custom-font
+	// builds replace it with the source font's own notice.
+	Copyright string
+	// ExtraNames are non-identity records (custom builds only: the source
+	// font's license description / URL, name IDs 13 and 14). Presets never
+	// set them, so preset name tables stay byte-identical to D4/D4-Regular.
+	ExtraNames []NameRecord
+	// MacStyle, when non-nil, overwrites head.macStyle (custom builds only)
+	// so it agrees with the golden fsSelection. Presets leave it nil and
+	// keep the Sarasa source value untouched.
+	MacStyle *uint16
 }
 
 //go:embed testdata/windows11-name-golden.json
@@ -89,6 +96,7 @@ func spec(key, version string) FontSpec {
 		FSSelection: fsSelection,
 		Version:     version,
 		Identity:    append([]NameRecord(nil), g.Records...),
+		Copyright:   Copyright,
 	}
 }
 
@@ -102,10 +110,11 @@ func SimSun(version string) FontSpec     { return spec("SimSun", version) }
 func NSimSun(version string) FontSpec    { return spec("NSimSun", version) }
 func SimSunExtB(version string) FontSpec { return spec("SimSunExtB", version) }
 
-// D4 starts from D2 and adds a Segoe UI Regular 400 output whose glyphs come
-// from the same SarasaUiSC-SemiBold source as the project's YaHei Regular.
-// Unlike D3, D4 filters cmap to the embedded Windows 11 Segoe UI coverage
-// whitelist so CJK continues to fall back to D2's Microsoft YaHei UI faces.
+// SegoeUIRegular is the Windows 11 Segoe UI Regular 400 identity. Its glyph
+// source is chosen by the recipe (SemiBold in the "semibold" preset, Regular
+// in the "regular" preset); in every case the cmap is filtered to the
+// embedded Windows 11 Segoe UI coverage whitelist so CJK continues to fall
+// back to D2's Microsoft YaHei UI faces.
 func SegoeUIRegular(version string) FontSpec { return spec("SegoeUIRegular", version) }
 
 // D2 adds two experimental 600-weight faces to the YaHei families. There is
@@ -128,6 +137,7 @@ func semiBoldSpec(ui bool, version string) FontSpec {
 			Weight:      weight,
 			FSSelection: fsSelection,
 			Version:     version,
+			Copyright:   Copyright,
 			Identity: []NameRecord{
 				{3, 1, 0x0409, 1, "Microsoft YaHei"},
 				{3, 1, 0x0409, 2, "SemiBold"},
@@ -152,6 +162,7 @@ func semiBoldSpec(ui bool, version string) FontSpec {
 		Weight:      weight,
 		FSSelection: fsSelection,
 		Version:     version,
+		Copyright:   Copyright,
 		Identity: []NameRecord{
 			{3, 1, 0x0409, 1, "Microsoft YaHei UI"},
 			{3, 1, 0x0409, 2, "SemiBold"},
@@ -174,8 +185,14 @@ func semiBoldSpec(ui bool, version string) FontSpec {
 func SemiBold(version string) FontSpec   { return semiBoldSpec(false, version) }
 func SemiBoldUI(version string) FontSpec { return semiBoldSpec(true, version) }
 
-var RequiredSources = []string{
-	RegularSource + ".ttf",
-	BoldSource + ".ttf",
-	LightSource + ".ttf",
+// Windows11OriginalSHA256 are the hashes of the Windows 11 originals the
+// golden records were extracted from (see GOLDEN.md). A system file with a
+// different hash is either already replaced or from another Windows build.
+var Windows11OriginalSHA256 = map[string]string{
+	"msyh.ttc":    "d79c55e68b1131eea0cc1c47be4f572d964f28c682e143db2ad09c1e4cb07a3f",
+	"msyhbd.ttc":  "4508821b3dffe01f0ef5e5326a3e60df705a44633858811f67b6982dce3f6ee6",
+	"msyhl.ttc":   "7e9bdf90bb5d3fe1b5975fc8ae31944b8fa674122261f92c28d4ec0b9c482fa1",
+	"simsun.ttc":  "120a51d2b14eb588700a21e15fc301f0ea55d7c1a4e1f3ae61db83b7c8d42cd6",
+	"simsunb.ttf": "a67e70adce24390c43a0c5dfc0856dc81660e91489db930999aa0973780e8a67",
+	"segoeui.ttf": "8134dbcd09e7b123c9a7f229d49cffbcb01352cc72ea5e1076b65d0dca9f73cd",
 }

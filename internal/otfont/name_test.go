@@ -3,7 +3,7 @@ package otfont
 import (
 	"testing"
 
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/config"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/config"
 )
 
 func TestBuildNameTablePreservesWindows11Oddities(t *testing.T) {

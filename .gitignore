@@ -1,5 +1,10 @@
 /temp/
 /result/
+/output/
+/dist/
 /yahei-sarasa
+/yahei-sarasa-go
+*.exe
 .fixture/
 .fixture-result/
+__pycache__/

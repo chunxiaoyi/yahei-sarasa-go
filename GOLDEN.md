@@ -53,3 +53,36 @@ Windows 11 Segoe UI Regular coverage ∩ Sarasa source coverage
 ```
 
 This is specifically designed to avoid the D3 failure mode where copying Sarasa's entire cmap caused Segoe UI to claim Chinese and bypass Microsoft YaHei UI fallback.
+
+## D4-Regular 400-path rule (former `regular` branch, now the `regular` preset)
+
+D4-Regular keeps every D4 behavior except that both 400-weight UI glyph sources move together from SemiBold to true Regular:
+
+```text
+D4:         Microsoft YaHei / UI Regular 400 <- SarasaUiSC-SemiBold.ttf
+D4-Regular: Microsoft YaHei / UI Regular 400 <- SarasaUiSC-Regular.ttf
+
+D4:         Segoe UI Regular 400 <- SarasaUiSC-SemiBold.ttf
+D4-Regular: Segoe UI Regular 400 <- SarasaUiSC-Regular.ttf
+```
+
+The Segoe UI Windows 11 identity and D4 cmap whitelist strategy remain unchanged. D2 SemiBold 600 remains SarasaUiSC-SemiBold; SimSun/NSimSun/ExtB remain SarasaUiSC-SemiBold; Bold and Light remain unchanged.
+
+## v2: one code base, two presets
+
+Since v2 the two branches are two presets over one build path (`internal/recipe`). Every golden value above is applied by the same functions as before, in the same order, so preset output is byte-for-byte identical to the original programs:
+
+- `semibold` preset = D4 (`main` @ b9aa06c)
+- `regular` preset = D4-Regular (`regular` @ ee9e874)
+
+`internal/recipe/testdata/regression-sarasa.json` pins the SHA-256 of all six outputs of both original programs for Sarasa 1.0.42 (hinted and unhinted) and for a synthetic fixture; the tests rebuild and compare.
+
+The hashes of the Windows 11 originals listed at the top are also embedded (`config.Windows11OriginalSHA256`) so the GUI can tell an original system file from a replaced one.
+
+## Custom fonts and the golden source
+
+Custom builds use exactly the same identity records, weights, fsSelection values, face order and Segoe UI whitelist. They differ only where the golden source does not speak:
+
+- Name ID 0 keeps the source font's own copyright notice (instead of `Made from sarasa by GPT`), and the source's license description / URL (IDs 13/14) are carried over. Name ID 5 follows the same version rule as the presets.
+- `head.macStyle` is set to agree with the golden fsSelection (bold bit only on the 700 faces).
+- Source fonts are normalised first (variation tables / STAT / DSIG removed, Windows cmap records added when missing, OS/2 v2-3 raised to v4, coverage-backed code page bits). None of this is ever applied to the Sarasa presets.

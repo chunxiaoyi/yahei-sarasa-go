@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/config"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/config"
 )
 
 const (
@@ -100,9 +100,19 @@ func BuildNameTable(spec config.FontSpec) ([]byte, error) {
 	// These two fields are explicitly set by the original Python project and
 	// are not Windows identity fields.
 	records = append(records,
-		NameRecord{PlatformID: platformWindows, EncodingID: encodingUnicodeBMP, LanguageID: langEnglishUS, NameID: 0, Value: config.Copyright},
+		NameRecord{PlatformID: platformWindows, EncodingID: encodingUnicodeBMP, LanguageID: langEnglishUS, NameID: 0, Value: specCopyright(spec)},
 		NameRecord{PlatformID: platformWindows, EncodingID: encodingUnicodeBMP, LanguageID: langEnglishUS, NameID: 5, Value: spec.Version},
 	)
+	// Custom builds only: license records carried over from the source font.
+	for _, r := range spec.ExtraNames {
+		records = append(records, NameRecord{
+			PlatformID: r.PlatformID,
+			EncodingID: r.EncodingID,
+			LanguageID: r.LanguageID,
+			NameID:     r.NameID,
+			Value:      r.Value,
+		})
+	}
 
 	sort.SliceStable(records, func(i, j int) bool {
 		a, b := records[i], records[j]
@@ -227,10 +237,24 @@ func VersionFromFont(f *Font) (string, error) {
 	return "", errors.New("name: source font has no version (name ID 5)")
 }
 
+// specCopyright returns the name ID 0 value for spec. Presets always carry
+// config.Copyright; an empty value (hand-built specs in tests) means the same.
+func specCopyright(spec config.FontSpec) string {
+	if spec.Copyright == "" {
+		return config.Copyright
+	}
+	return spec.Copyright
+}
+
 func ApplySpec(src *Font, spec config.FontSpec) (*Font, error) {
 	f := src.Clone()
 	if err := f.PrepareCommon(spec.Weight, spec.FSSelection); err != nil {
 		return nil, err
+	}
+	if spec.MacStyle != nil {
+		if err := f.SetMacStyle(*spec.MacStyle); err != nil {
+			return nil, err
+		}
 	}
 	name, err := BuildNameTable(spec)
 	if err != nil {

@@ -1,259 +1,354 @@
+// yahei-sarasa-go builds replacement Windows 11 system fonts that carry the
+// exact Microsoft YaHei / SimSun / Segoe UI identities while drawing Sarasa
+// Gothic (or user-supplied) glyphs.
+//
+// Run without arguments for the GUI. Command line:
+//
+//	yahei-sarasa-go [build] [-preset semibold|regular] [-source-dir DIR] [-result DIR] ...
+//	yahei-sarasa-go custom -font A.ttf -font B.ttf [-style regular|semibold] ...
+//	yahei-sarasa-go inspect FONT... [-json]
 package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
 
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/config"
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/fetch"
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/otfont"
-	"github.com/chunxiaoyi/yahei-sarasa-semibold-go/internal/remotezip"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/app"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/custom"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/fetch"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/gui"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/recipe"
 )
 
-type options struct {
-	hinted    bool
-	tempDir   string
-	resultDir string
-	keepTemp  bool
-	sourceDir string
-}
-
 func main() {
-	var opt options
-	flag.BoolVar(&opt.hinted, "hinted", true, "use hinted Sarasa UI TTF package")
-	flag.StringVar(&opt.tempDir, "temp", "./temp", "temporary directory")
-	flag.StringVar(&opt.resultDir, "result", "./result", "result directory")
-	flag.BoolVar(&opt.keepTemp, "keep-temp", false, "keep extracted Sarasa source TTF files")
-	flag.StringVar(&opt.sourceDir, "source-dir", "", "skip network access and read the three required SarasaUiSC TTF files from this directory")
-	flag.Parse()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
-	if err := run(context.Background(), opt); err != nil {
+	fetch.SystemProxy = platform.SystemProxy
+	args := os.Args[1:]
+	if len(args) > 0 {
+		platform.AttachParentConsole()
+	}
+	var err error
+	switch {
+	case len(args) == 0:
+		err = gui.Run(ctx, gui.Options{})
+	case args[0] == "gui" || args[0] == "-gui" || args[0] == "--gui":
+		err = runGUI(ctx, args[1:])
+	case args[0] == "build":
+		err = runBuild(ctx, args[1:])
+	case args[0] == "custom":
+		err = runCustom(ctx, args[1:])
+	case args[0] == "inspect":
+		err = runInspect(args[1:])
+	case args[0] == "version" || args[0] == "-version" || args[0] == "--version":
+		fmt.Println("yahei-sarasa-go", app.Version)
+	case args[0] == "help" || args[0] == "-h" || args[0] == "--help" || args[0] == "-help":
+		usage()
+	case strings.HasPrefix(args[0], "-"):
+		// Original CLI: flags only, e.g. `go run . -source-dir D:\Sarasa`.
+		err = runBuild(ctx, args)
+	default:
+		usage()
+		err = fmt.Errorf("unknown command %q", args[0])
+	}
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			fmt.Fprintln(os.Stderr, "已取消")
+			os.Exit(130)
+		}
 		fmt.Fprintln(os.Stderr, "ERROR:", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, opt options) error {
-	if err := recreateDir(opt.resultDir); err != nil {
-		return err
+func usage() {
+	fmt.Print(`yahei-sarasa-go ` + app.Version + `
+
+  (无参数)                     打开图形界面
+  build   [选项]               生成 Sarasa 预设（不写 build 直接给选项也可以，兼容旧用法）
+  custom  -font 文件 [选项]    用自己的字体生成
+  inspect 文件... [-json]      体检字体文件（也可用来提取 Windows 原版字体信息）
+  version
+
+build 选项：
+  -preset semibold|regular     semibold = 原 main 分支（默认），regular = 原 regular 分支
+  -source-dir 目录或zip        使用本地 SarasaUiSC-*.ttf，不联网
+  -version 1.0.42              固定 Sarasa 版本（默认最新）
+  -hinted=true                 使用 hinted 包
+  -result ./result             输出目录（只放 6 个字体，与旧版完全一致）
+  -out 目录                    改为生成完整的包（fonts/ + manifest + 校验 + 说明）
+  -zip                         与 -out 一起：额外打成 zip
+  -cache 目录                  缓存下载的 Sarasa（"auto" = 用户缓存目录）
+  -proxy URL|direct            代理，例如 http://127.0.0.1:7890
+  -mirror URL                  下载地址前缀，例如 https://ghfast.top/
+  -temp ./temp  -keep-temp
+
+custom 选项：
+  -font 文件                   可重复；支持 TTF/OTF/TTC/OTC/WOFF
+  -style regular|semibold      regular = 正文用 400；semibold = 正文用最接近 600 的字重（与两个预设同理）
+  -assign 槽位=文件[#序号]      手动指定，槽位：light regular semibold bold simsun segoe
+  -outputs msyh.ttc,...         只生成其中几个文件（默认 6 个全部）
+  -result 目录 | -out 目录 [-zip]
+`)
+}
+
+func cacheRoot(v string) string {
+	if v != "auto" {
+		return v
 	}
-	if opt.sourceDir == "" {
-		if err := recreateDir(opt.tempDir); err != nil {
-			return err
+	if d, err := os.UserCacheDir(); err == nil {
+		return filepath.Join(d, "yahei-sarasa-go")
+	}
+	return filepath.Join(os.TempDir(), "yahei-sarasa-go-cache")
+}
+
+func runGUI(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("gui", flag.ExitOnError)
+	addr := fs.String("addr", "127.0.0.1:0", "listen address (loopback only)")
+	browser := fs.Bool("browser", false, "open in the default browser instead of an app window")
+	noOpen := fs.Bool("no-open", false, "do not open any window; print the URL")
+	out := fs.String("out", "", "output root")
+	_ = fs.Parse(args)
+	return gui.Run(ctx, gui.Options{Addr: *addr, ForceBrowser: *browser, NoOpen: *noOpen, OutRoot: *out})
+}
+
+func runBuild(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("build", flag.ExitOnError)
+	opt := app.PresetOptions{}
+	fs.StringVar(&opt.Preset, "preset", "semibold", "semibold (main) or regular")
+	fs.BoolVar(&opt.Hinted, "hinted", true, "use hinted Sarasa UI TTF package")
+	tempDir := fs.String("temp", "./temp", "temporary directory")
+	fs.StringVar(&opt.ResultDir, "result", "./result", "result directory (exactly the six fonts)")
+	fs.BoolVar(&opt.KeepTemp, "keep-temp", false, "keep extracted Sarasa source TTF files")
+	fs.StringVar(&opt.Local, "source-dir", "", "skip network access and read the SarasaUiSC TTF files from this directory or ZIP")
+	fs.StringVar(&opt.Version, "version", "", "Sarasa version (default latest)")
+	cache := fs.String("cache", "", "cache directory for downloaded Sarasa sources (auto = user cache dir)")
+	fs.StringVar(&opt.Proxy, "proxy", "", "proxy URL, or direct")
+	fs.StringVar(&opt.Mirror, "mirror", "", "download URL prefix")
+	out := fs.String("out", "", "write a full package (fonts/, manifest, checksums, notes) under this directory instead of -result")
+	fs.BoolVar(&opt.Zip, "zip", false, "with -out: also write a zip")
+	_ = fs.Parse(args)
+	if fs.NArg() > 0 {
+		return fmt.Errorf("unexpected arguments: %v", fs.Args())
+	}
+	opt.CacheDir = cacheRoot(*cache)
+	opt.TempDir = *tempDir
+	if *out != "" {
+		opt.OutRoot, opt.ResultDir = *out, ""
+	}
+	sink := progress.Console(os.Stdout)
+	_, err := app.RunPreset(ctx, opt, sink)
+	if opt.CacheDir == "" && !opt.KeepTemp {
+		_ = os.Remove(opt.TempDir) // only succeeds when empty, as before
+	}
+	return err
+}
+
+// parseInterspersed lets file arguments and flags appear in any order
+// (the standard flag package stops at the first non-flag argument).
+func parseInterspersed(fs *flag.FlagSet, args []string) []string {
+	var positional []string
+	for {
+		_ = fs.Parse(args)
+		args = fs.Args()
+		if len(args) == 0 {
+			return positional
 		}
-		if !opt.keepTemp {
-			defer os.RemoveAll(opt.tempDir)
+		positional = append(positional, args[0])
+		args = args[1:]
+	}
+}
+
+type multiFlag []string
+
+func (m *multiFlag) String() string     { return strings.Join(*m, ",") }
+func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
+
+func runCustom(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("custom", flag.ExitOnError)
+	var fonts, assigns multiFlag
+	fs.Var(&fonts, "font", "font file (repeatable)")
+	fs.Var(&assigns, "assign", "slot=file[#index] (repeatable)")
+	style := fs.String("style", "regular", "regular or semibold")
+	outputs := fs.String("outputs", "", "comma-separated subset of output files")
+	result := fs.String("result", "", "result directory (fonts only)")
+	out := fs.String("out", "", "package root directory")
+	zipIt := fs.Bool("zip", false, "with -out: also write a zip")
+	name := fs.String("name", "", "package name")
+	fonts = append(fonts, parseInterspersed(fs, args)...)
+	if len(fonts) == 0 && len(assigns) == 0 {
+		return errors.New("custom: give at least one -font")
+	}
+	if *result == "" && *out == "" {
+		*result = "./result"
+	}
+	st, err := custom.ParseStyle(*style)
+	if err != nil {
+		return err
+	}
+
+	var faces []*custom.Face
+	byPath := map[string]*custom.File{}
+	load := func(path string) (*custom.File, error) {
+		abs, _ := filepath.Abs(path)
+		if f, ok := byPath[abs]; ok {
+			return f, nil
 		}
-		if err := acquireSources(ctx, opt); err != nil {
-			return err
-		}
-		opt.sourceDir = opt.tempDir
-	}
-	fmt.Println("========> Generating Windows 11 compatible font identities")
-	if err := generateAll(opt.sourceDir, opt.resultDir); err != nil {
-		return err
-	}
-	fmt.Println("========> Done:", opt.resultDir)
-	return nil
-}
-
-func acquireSources(ctx context.Context, opt options) error {
-	r, err := fetch.Latest(ctx)
-	if err != nil {
-		return err
-	}
-	assetName := fetch.UIZipAssetName(r.Version(), opt.hinted)
-	asset, err := r.FindAsset(assetName)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("========> Latest Sarasa: %s\n", r.TagName)
-	fmt.Printf("========> Remote package: %s (%.1f MiB logical ZIP)\n", asset.Name, float64(asset.Size)/(1<<20))
-	fmt.Println("========> HTTP Range mode: only the three required SarasaUiSC entries will be fetched")
-	fetched, err := remotezip.ExtractSelected(ctx, http.DefaultClient, asset.BrowserDownloadURL, asset.Size, opt.tempDir, config.RequiredSources)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("========> Network bytes fetched for ZIP ranges: %.1f MiB\n", float64(fetched)/(1<<20))
-	return nil
-}
-
-func generateAll(sourceDir, resultDir string) error {
-	regularSource, err := loadFont(filepath.Join(sourceDir, config.RegularSource+".ttf"))
-	if err != nil {
-		return err
-	}
-	boldSource, err := loadFont(filepath.Join(sourceDir, config.BoldSource+".ttf"))
-	if err != nil {
-		return err
-	}
-	lightSource, err := loadFont(filepath.Join(sourceDir, config.LightSource+".ttf"))
-	if err != nil {
-		return err
-	}
-
-	regVersion, err := otfont.VersionFromFont(regularSource)
-	if err != nil {
-		return fmt.Errorf("regular source version: %w", err)
-	}
-	boldVersion, err := otfont.VersionFromFont(boldSource)
-	if err != nil {
-		return fmt.Errorf("bold source version: %w", err)
-	}
-	lightVersion, err := otfont.VersionFromFont(lightSource)
-	if err != nil {
-		return fmt.Errorf("light source version: %w", err)
-	}
-
-	// D4 keeps D2 intact and adds one Segoe UI Regular 400 output. Like D3,
-	// its glyph source is SarasaUiSC-SemiBold; unlike D3, its cmap is capped
-	// by the Windows 11 original Segoe UI coverage snapshot so CJK does not
-	// get claimed by Segoe and continues to fall back to Microsoft YaHei UI.
-	segoe, err := otfont.ApplySpec(regularSource, config.SegoeUIRegular(regVersion))
-	if err != nil {
-		return err
-	}
-	kept, dropped, err := segoe.FilterCmapToWhitelist(config.SegoeUIRegularAllows)
-	if err != nil {
-		return fmt.Errorf("segoeui.ttf cmap filter: %w", err)
-	}
-	if err := otfont.VerifySpec(segoe, config.SegoeUIRegular(regVersion)); err != nil {
-		return fmt.Errorf("segoeui.ttf: %w", err)
-	}
-	verifiedCmap, err := otfont.VerifyCmapWhitelist(segoe, config.SegoeUIRegularAllows)
-	if err != nil {
-		return fmt.Errorf("segoeui.ttf: %w", err)
-	}
-	if verifiedCmap != kept {
-		return fmt.Errorf("segoeui.ttf: cmap count changed after build: kept=%d verify=%d", kept, verifiedCmap)
-	}
-	segoeBytes, err := segoe.Bytes()
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(resultDir, "segoeui.ttf"), segoeBytes, 0o644); err != nil {
-		return err
-	}
-	fmt.Printf("========> segoeui.ttf generated (D4: Sarasa SemiBold glyphs, Win11 Segoe cmap whitelist; kept %d, dropped %d source mappings)\n", kept, dropped)
-
-	if err := makeTTC(filepath.Join(resultDir, "msyh.ttc"), regularSource,
-		config.Regular(regVersion), config.RegularUI(regVersion)); err != nil {
-		return err
-	}
-	fmt.Println("========> msyh.ttc generated")
-
-	// D2 keeps the two original C1 Bold faces at indices 0/1 and appends two
-	// real 600-weight SemiBold faces at indices 2/3. The new faces use the same
-	// SarasaUiSC-SemiBold source that C1 exposes as Regular, but retain weight
-	// 600 so DirectWrite has an exact match for WinUI SemiBold requests.
-	if err := makeTTCFaces(filepath.Join(resultDir, "msyhbd.ttc"),
-		faceBuild{boldSource, config.Bold(boldVersion)},
-		faceBuild{boldSource, config.BoldUI(boldVersion)},
-		faceBuild{regularSource, config.SemiBold(regVersion)},
-		faceBuild{regularSource, config.SemiBoldUI(regVersion)},
-	); err != nil {
-		return err
-	}
-	fmt.Println("========> msyhbd.ttc generated (Bold 700 + experimental SemiBold 600 faces)")
-
-	if err := makeTTC(filepath.Join(resultDir, "msyhl.ttc"), lightSource,
-		config.Light(lightVersion), config.LightUI(lightVersion)); err != nil {
-		return err
-	}
-	fmt.Println("========> msyhl.ttc generated")
-
-	if err := makeTTC(filepath.Join(resultDir, "simsun.ttc"), regularSource,
-		config.SimSun(regVersion), config.NSimSun(regVersion)); err != nil {
-		return err
-	}
-	fmt.Println("========> simsun.ttc generated")
-
-	ext, err := otfont.ApplySpec(regularSource, config.SimSunExtB(regVersion))
-	if err != nil {
-		return err
-	}
-	if err := otfont.VerifySpec(ext, config.SimSunExtB(regVersion)); err != nil {
-		return fmt.Errorf("simsunb.ttf: %w", err)
-	}
-	b, err := ext.Bytes()
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(filepath.Join(resultDir, "simsunb.ttf"), b, 0o644); err != nil {
-		return err
-	}
-	fmt.Println("========> simsunb.ttf generated")
-
-	return verifyResultDirectory(resultDir)
-}
-
-type faceBuild struct {
-	src  *otfont.Font
-	spec config.FontSpec
-}
-
-func makeTTC(path string, src *otfont.Font, aSpec, bSpec config.FontSpec) error {
-	return makeTTCFaces(path, faceBuild{src, aSpec}, faceBuild{src, bSpec})
-}
-
-func makeTTCFaces(path string, inputs ...faceBuild) error {
-	fonts := make([]*otfont.Font, 0, len(inputs))
-	for i, in := range inputs {
-		f, err := otfont.ApplySpec(in.src, in.spec)
+		f, err := custom.Inspect(abs)
 		if err != nil {
-			return fmt.Errorf("%s face %d apply: %w", filepath.Base(path), i, err)
+			return nil, err
 		}
-		if err := otfont.VerifySpec(f, in.spec); err != nil {
-			return fmt.Errorf("%s face %d: %w", filepath.Base(path), i, err)
+		if f.Error != "" {
+			return nil, fmt.Errorf("%s：%s", f.Name, f.Error)
 		}
-		fonts = append(fonts, f)
+		byPath[abs] = f
+		faces = append(faces, f.Faces...)
+		return f, nil
 	}
-	data, err := otfont.TTC(fonts...)
-	if err != nil {
+	for _, p := range fonts {
+		if _, err := load(p); err != nil {
+			return err
+		}
+	}
+	req := custom.Request{Style: st, Assign: custom.Assignment{}}
+	for _, a := range assigns {
+		slotName, target, ok := strings.Cut(a, "=")
+		slot := recipe.Slot(strings.TrimSpace(slotName))
+		if !ok || !slot.Valid() {
+			return fmt.Errorf("bad -assign %q (want slot=file[#index])", a)
+		}
+		path, idx := target, 0
+		if i := strings.LastIndex(target, "#"); i > 0 {
+			n, err := strconv.Atoi(target[i+1:])
+			if err != nil {
+				return fmt.Errorf("bad face index in %q", a)
+			}
+			path, idx = target[:i], n
+		}
+		f, err := load(path)
+		if err != nil {
+			return err
+		}
+		if idx < 0 || idx >= len(f.Faces) {
+			return fmt.Errorf("%s has %d faces, index %d out of range", f.Name, len(f.Faces), idx)
+		}
+		req.Assign[slot] = f.Faces[idx].ID
+	}
+	if *outputs != "" {
+		for _, o := range strings.Split(*outputs, ",") {
+			req.Outputs = append(req.Outputs, strings.TrimSpace(o))
+		}
+	}
+
+	ev := custom.Evaluate(faces, req)
+	printEvaluation(ev)
+	if !ev.CanBuild {
+		_, err := custom.ToRecipe(faces, ev)
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	sink := progress.Console(os.Stdout)
+	_, err = app.RunCustom(ctx, app.CustomOptions{Faces: faces, Request: req, ResultDir: *result, OutRoot: *out, Zip: *zipIt, Name: *name}, sink)
+	return err
 }
 
-func loadFont(path string) (*otfont.Font, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+func printEvaluation(ev custom.Evaluation) {
+	fmt.Println("========> 字体分配：")
+	for _, s := range ev.Slots {
+		mark := "手动"
+		if s.Auto {
+			mark = "自动"
+		}
+		fmt.Printf("  %-22s ← %s（字重 %d，%s）\n", custom.SlotTitle(s.Slot), s.FaceLabel, s.SourceWeight, mark)
+		for _, i := range s.Issues {
+			fmt.Printf("      [%s] %s\n", sevLabel(i.Severity), i.Msg)
+		}
 	}
-	f, err := otfont.Parse(b)
-	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+	for _, i := range ev.Issues {
+		fmt.Printf("  [%s] %s\n", sevLabel(i.Severity), i.Msg)
 	}
-	return f, nil
+	for _, g := range ev.Faces {
+		fmt.Printf("  %s：\n", g.Label)
+		for _, i := range g.Issues {
+			fmt.Printf("      [%s] %s\n", sevLabel(i.Severity), i.Msg)
+		}
+		for _, f := range g.Fixes {
+			fmt.Printf("      [修正] %s\n", f.Msg)
+		}
+	}
+	for _, o := range ev.Outputs {
+		for _, i := range o.Issues {
+			fmt.Printf("  %s [%s] %s\n", o.Name, sevLabel(i.Severity), i.Msg)
+		}
+	}
 }
 
-func recreateDir(path string) error {
-	if err := os.RemoveAll(path); err != nil {
-		return err
+func sevLabel(s custom.Severity) string {
+	switch s {
+	case custom.SevError:
+		return "错误"
+	case custom.SevWarn:
+		return "注意"
 	}
-	return os.MkdirAll(path, 0o755)
+	return "信息"
 }
 
-func verifyResultDirectory(dir string) error {
-	want := map[string]bool{
-		"msyh.ttc": true, "msyhbd.ttc": true, "msyhl.ttc": true,
-		"simsun.ttc": true, "simsunb.ttf": true,
-		"segoeui.ttf": true,
+func runInspect(args []string) error {
+	fs := flag.NewFlagSet("inspect", flag.ExitOnError)
+	asJSON := fs.Bool("json", false, "machine-readable output")
+	paths := parseInterspersed(fs, args)
+	if len(paths) == 0 {
+		return errors.New("inspect: give one or more font files")
 	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
+	var files []*custom.File
+	for _, p := range paths {
+		f, err := custom.Inspect(p)
+		if err != nil {
+			return err
+		}
+		files = append(files, f)
 	}
-	if len(entries) != len(want) {
-		return fmt.Errorf("result: expected exactly 6 files, got %d", len(entries))
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(files)
 	}
-	for _, e := range entries {
-		if e.IsDir() || !want[e.Name()] {
-			return fmt.Errorf("result: unexpected entry %q", e.Name())
+	for _, f := range files {
+		fmt.Printf("%s  (%s, %.1f MiB)\n  sha256 %s\n", f.Path, f.Container, float64(f.Size)/(1<<20), f.SHA256)
+		if f.Error != "" {
+			fmt.Printf("  [错误] %s\n", f.Error)
+			continue
+		}
+		for _, face := range f.Faces {
+			x := face.Facts
+			fmt.Printf("  #%d %s / %s  weight %d  %s  glyphs %d  UPM %d  win %d/%d (%.2f em)\n",
+				face.Index, x.Family, x.Subfamily, x.WeightClass, x.Outline, x.NumGlyphs, x.Metrics.UPM,
+				x.Metrics.WinAscent, x.Metrics.WinDescent, x.Metrics.WinLineHeight())
+			fmt.Printf("     version %q  fsSelection 0x%04X  fsType 0x%04X  OS/2 v%d  codepages 0x%08X\n",
+				x.VersionString, x.FSSelection, x.FSType, x.OS2Version, x.CodePage1)
+			var cov []string
+			for _, c := range face.Coverage {
+				cov = append(cov, fmt.Sprintf("%s %d/%d", c.Name, c.Have, c.Total))
+			}
+			sort.Strings(cov)
+			fmt.Printf("     覆盖：%s；Segoe 白名单内 %d\n", strings.Join(cov, "，"), face.SegoeKept)
+			for _, i := range face.Issues {
+				fmt.Printf("     [%s] %s\n", sevLabel(i.Severity), i.Msg)
+			}
+			for _, fix := range face.Fixes {
+				fmt.Printf("     [修正] %s\n", fix.Msg)
+			}
 		}
 	}
 	return nil
