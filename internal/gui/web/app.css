@@ -210,6 +210,9 @@ dialog::backdrop { background: rgba(10, 14, 20, 0.45); }
 .plan th { color: var(--muted); font-weight: 400; }
 .plan .blockers li { color: var(--err); }
 .plan .warnings li { color: var(--warn); }
+.snaps { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; }
+.snaps .radio { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; }
+.snaps .file-meta { grid-column: 2; }
 .plan-buttons { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--rule); padding-top: 12px; }
 
 /* settings */

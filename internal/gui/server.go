@@ -712,8 +712,6 @@ func (s *server) handlePick(r *http.Request) (any, error) {
 			opt.Initial = s.settings.OutRoot
 		}
 		s.mu.Unlock()
-	case "originals":
-		opt = platform.PickOptions{Title: "选择保存着微软原版字体的备份文件夹", Folder: true}
 	case "output":
 		opt = platform.PickOptions{Title: "选择输出文件夹", Folder: true}
 		s.mu.Lock()
@@ -955,9 +953,9 @@ func (s *server) handleSystem(r *http.Request) (any, error) {
 }
 
 type systemRequest struct {
-	Action  string `json:"action"`  // install, restore, clear-cache, cancel
-	Package string `json:"package"` // install: package folder
-	Import  string `json:"import"`  // install: folder with genuine originals
+	Action   string `json:"action"`   // install, restore, forget, clear-cache, cancel
+	Package  string `json:"package"`  // install: package folder
+	Snapshot string `json:"snapshot"` // restore (optional, default newest), forget (required)
 }
 
 func (req systemRequest) validate() error {
@@ -969,12 +967,16 @@ func (req systemRequest) validate() error {
 		if !filepath.IsAbs(req.Package) {
 			return badRequest("字体包需要是完整路径")
 		}
+	case "forget":
+		if !sysinstall.ValidSnapshotID(req.Snapshot) {
+			return badRequest("请选择要删除的备份")
+		}
 	case "restore", "clear-cache", "cancel":
 	default:
 		return badRequest("unknown action %q", req.Action)
 	}
-	if req.Import != "" && !filepath.IsAbs(req.Import) {
-		return badRequest("备份文件夹需要是完整路径")
+	if req.Snapshot != "" && !sysinstall.ValidSnapshotID(req.Snapshot) {
+		return badRequest("备份编号无效")
 	}
 	return nil
 }
@@ -996,9 +998,9 @@ func (s *server) handleSystemPlan(r *http.Request) (any, error) {
 	sys := sysinstall.System()
 	switch req.Action {
 	case "install":
-		return sysinstall.PlanInstall(sys, paths, req.Package, req.Import), nil
+		return sysinstall.PlanInstall(sys, paths, req.Package), nil
 	case "restore":
-		return sysinstall.PlanRestore(sys, paths), nil
+		return sysinstall.PlanRestore(sys, paths, req.Snapshot), nil
 	case "clear-cache":
 		return sysinstall.PlanClearCache(sys, paths), nil
 	}
@@ -1016,7 +1018,7 @@ func (s *server) handleSystemRun(r *http.Request) (any, error) {
 	if !platform.CanElevate() {
 		return nil, httpError{http.StatusNotImplemented, sysinstall.ErrUnsupported.Error()}
 	}
-	titles := map[string]string{"install": "安装字体包到系统", "restore": "还原原版字体", "clear-cache": "清空字体缓存", "cancel": "取消待重启的操作"}
+	titles := map[string]string{"install": "安装字体包到系统", "restore": "还原备份", "forget": "删除一份备份", "clear-cache": "清空字体缓存", "cancel": "取消待重启的操作"}
 	j, err := s.startJob("system", titles[req.Action], func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		return nil, "", s.runElevated(sink, req)
 	})
@@ -1046,10 +1048,12 @@ func (s *server) runElevated(sink progress.Sink, req systemRequest) error {
 	}
 	id = id[:32]
 	args := []string{"system", req.Action}
-	if req.Action == "install" {
+	switch req.Action {
+	case "install":
 		args = append(args, req.Package)
-		if req.Import != "" {
-			args = append(args, "-import", req.Import)
+	case "restore", "forget":
+		if req.Snapshot != "" {
+			args = append(args, req.Snapshot)
 		}
 	}
 	args = append(args, "-result", id)

@@ -189,7 +189,7 @@ function renderResult(j) {
     return `<div class="result failed"><p class="err">${esc(j.error || '未完成')}</p></div>`;
   }
   if (j.kind === 'system') {
-    const reboot = j.action && j.action !== 'cancel'
+    const reboot = j.action && j.action !== 'cancel' && j.action !== 'forget'
       ? '<button class="primary" data-reboot>现在重启</button>' : '';
     return `<div class="result"><p>${esc(actionDone[j.action] || '完成')}</p>
       <div class="result-actions">${reboot}<button data-goto="system">查看系统字体</button></div></div>`;
@@ -512,7 +512,8 @@ const stateLabel = {
 
 const actionDone = {
   install: '已登记安装，重启后生效（同时清空字体缓存）',
-  restore: '已登记还原原版，重启后生效（同时清空字体缓存）',
+  restore: '已登记还原备份，重启后生效（同时清空字体缓存）',
+  forget: '已删除这份备份',
   'clear-cache': '已登记清空字体缓存，重启后生效',
   cancel: '已取消待重启的操作',
 };
@@ -535,7 +536,7 @@ async function loadSystem() {
     const rows = r.files.map((f) => {
       let note = '';
       if (f.expected !== undefined && f.expected !== null) note = f.matchesInstalled ? '与安装记录一致' : '与安装记录不一致';
-      else if (f.matchesOriginal) note = '与原版备份一致';
+      if (f.backedUp) note = note ? note + '，已备份' : '已备份';
       return `<tr>
       <td>${esc(f.name)}</td>
       <td><span class="state ${esc(f.state)}">${esc(stateLabel[f.state] || f.state)}</span>${note ? `<div class="file-meta">${esc(note)}</div>` : ''}${f.copyright && f.state !== 'original' && f.state !== 'ours' ? `<div class="file-meta">${esc(f.copyright.slice(0, 80))}</div>` : ''}</td>
@@ -556,10 +557,11 @@ function renderSysStatus(r) {
     $('#sys-status').innerHTML = r.error ? `<div class="sys-card failed"><span class="msg">${esc(r.error)}</span></div>` : '';
     return;
   }
-  const o = rep.originals;
-  const orig = o
-    ? `原版备份：已保存（${esc((o.created || '').replace('T', ' ').slice(0, 16))}）<button class="link" data-reveal="${esc(rep.paths.dataDir + sep() + 'originals')}">打开</button>`
-    : '原版备份：还没有（第一次安装时自动建立）';
+  const snaps = rep.snapshots || [];
+  const nonOrig = snaps.some((s) => s.nonOriginal && s.nonOriginal.length);
+  const orig = snaps.length
+    ? `备份：${snaps.length} 份，共 ${mib(rep.backupBytes || 0)}${nonOrig ? '（含非原版字体）' : ''}；最近一份：${esc(snaps[0].label)} <button class="link" data-reveal="${esc(rep.paths.dataDir + sep() + 'backups')}">打开</button>`
+    : '备份：还没有（每次安装或还原前都会自动把当前字体照原样备份）';
   let actions = '';
   if (rep.pendingActive) {
     actions = `<div class="row"><button class="primary" data-reboot>现在重启</button><button data-sys="cancel" data-ok="${r.canElevate ? 1 : 0}">取消这次操作…</button></div>`;
@@ -585,7 +587,7 @@ function renderSysActions(r, packages) {
       <button class="primary" id="pkg-install" data-ok="${canRun ? 1 : 0}">安装到系统…</button>
     </div>
     <div class="row">
-      <button data-sys="restore" data-ok="${canRun && rep.originals ? 1 : 0}" title="${rep && rep.originals ? '' : '还没有原版备份'}">还原原版字体…</button>
+      <button data-sys="restore" data-ok="${canRun && rep.snapshots && rep.snapshots.length ? 1 : 0}" title="${rep && rep.snapshots && rep.snapshots.length ? '' : '还没有备份'}">还原备份…</button>
       <button data-sys="clear-cache" data-ok="${canRun ? 1 : 0}">只清空字体缓存…</button>
       <button id="backup">把当前 6 个文件另存一份</button>
       <button data-reveal="${esc(r.dir)}">打开 Fonts 文件夹</button>
@@ -625,7 +627,7 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-const planTitles = { install: '安装字体包到系统', restore: '还原原版字体', 'clear-cache': '清空字体缓存', cancel: '取消待重启的操作' };
+const planTitles = { install: '安装字体包到系统', restore: '还原备份', 'clear-cache': '清空字体缓存', cancel: '取消待重启的操作' };
 let planReq = null;
 
 function list(items, cls) {
@@ -652,23 +654,34 @@ async function openPlan(req) {
   if (plan.files && plan.files.length) {
     parts.push(`<h3>会改变的文件</h3><table><thead><tr><th>文件</th><th>现在</th><th>重启后</th></tr></thead><tbody>${plan.files.map((f) => `<tr><td>${esc(f.name)}</td><td>${esc(stateLabel[f.current] || f.current)}</td><td>${esc(f.after)}</td></tr>`).join('')}</tbody></table>`);
   }
-  if (plan.originals && plan.originals.length) {
-    const from = { system: '当前系统文件', import: '导入的备份', absent: '系统没有此文件（记为不存在）', none: '没有可用的原版' };
-    parts.push(`<h3>将要建立的原版备份</h3><table><thead><tr><th>文件</th><th>来源</th><th>状态</th></tr></thead><tbody>${plan.originals.map((o) => `<tr><td>${esc(o.name)}</td><td>${esc(from[o.from] || o.from)}</td><td>${esc(stateLabel[o.state] || o.state || '')}</td></tr>`).join('')}</tbody></table>`);
+  if (plan.backup && plan.backup.length) {
+    parts.push(`<h3>安装前会照原样备份的当前文件</h3><table><thead><tr><th>文件</th><th>现在是</th><th>备份</th></tr></thead><tbody>${plan.backup.map((b) => `<tr><td>${esc(b.name)}</td><td>${esc(stateLabel[b.state] || b.state)}</td><td>${b.state === 'missing' ? '记为不存在' : b.stored ? '已有相同备份' : '新保存'}</td></tr>`).join('')}</tbody></table>`);
+  }
+  if (plan.snapshots && plan.snapshots.length) {
+    parts.push(`<h3>还原到哪一份备份</h3><div class="snaps" role="radiogroup" aria-label="备份">${plan.snapshots.map((sn) => {
+      const extra = [];
+      if (sn.nonOriginal && sn.nonOriginal.length) extra.push('非原版：' + sn.nonOriginal.join('、'));
+      if (sn.missing && sn.missing.length) extra.push('不存在：' + sn.missing.join('、'));
+      if (!sn.complete) extra.push('文件不全');
+      return `<label class="radio"><input type="radio" name="snap" value="${esc(sn.id)}" ${sn.id === plan.snapshot ? 'checked' : ''}> ${esc(sn.label)}<span class="file-meta">${esc(mib(sn.size))}${extra.length ? '；' + esc(extra.join('；')) : ''}</span></label>`;
+    }).join('')}</div>
+    <p><button type="button" class="link" id="snap-forget">删除选中的这份备份…</button></p>`);
   }
   if (plan.steps && plan.steps.length) parts.push(`<h3>步骤</h3><ol>${plan.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>`);
   parts.push(list(plan.warnings, 'warnings'));
   parts.push(list(plan.blockers, 'blockers'));
-  if (plan.needsImport && state.info.canPick) {
-    parts.push(`<p><button type="button" id="plan-import">选择保存着原版的备份文件夹…</button> <span class="note">例如以前用「把当前 6 个文件另存一份」或手动复制的原版</span></p>`);
-  }
   $('#plan-body').innerHTML = parts.join('');
-  const imp = $('#plan-import');
-  if (imp) imp.addEventListener('click', async () => {
-    try {
-      const p = await api('/api/pick', { purpose: 'originals' });
-      if (p.paths && p.paths[0]) openPlan({ ...planReq, import: p.paths[0] });
-    } catch (err) { toast(err.message); }
+  $$('input[name="snap"]').forEach((r) => r.addEventListener('change', () => openPlan({ action: 'restore', snapshot: r.value })));
+  const forget = $('#snap-forget');
+  if (forget) forget.addEventListener('click', async () => {
+    const sel = $('input[name="snap"]:checked');
+    if (!sel) return;
+    const sn = plan.snapshots.find((x) => x.id === sel.value);
+    const warn = sn && sn.nonOriginal && sn.nonOriginal.length ? '\n\n这份备份里有非原版字体（' + sn.nonOriginal.join('、') + '），删除后可能很难再找回。' : '';
+    if (!window.confirm('删除备份「' + (sn ? sn.label : sel.value) + '」？' + warn)) return;
+    planReq = null;
+    $('#plan-dialog').close('cancel');
+    try { await api('/api/system/run', { action: 'forget', snapshot: sel.value }); } catch (err) { toast(err.message); }
   });
   $('#plan-run').disabled = !!(plan.blockers && plan.blockers.length) || (state.job && state.job.state === 'running');
 }

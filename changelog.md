@@ -12,7 +12,7 @@
 - **命令行**：旧用法不变（`-preset` 默认 semibold）；新增 `build -out/-zip/-cache`、`custom`、`inspect`。
 - **验证**：两个原分支的输出哈希写入回归测试；`tools/validate_fonts.py` 用 fontTools 独立复核。
 - 版权字段（name ID 0）改为 `Made from sarasa by GPT and Claude`。它不参与 Windows 字体匹配；系统字体页仍把旧字符串识别为本工具生成。
-- 安装与还原：在「系统字体」页把字体包安装到系统、还原原版、只清空字体缓存，都在下次重启时生效（MoveFileEx + PendingFileRenameOperations），换完字体后同一次重启里清空 `FontCache` 文件夹和 `FNTCACHE.DAT`。第一次安装前自动保存并校验微软原版；系统字体已被换过时须先导入原版备份。安装前后两次校验哈希与字体身份；新文件沿用原文件的所有者和权限；数据文件夹受保护、拒绝被他人预先创建；重启前可取消，失败会完整回滚。界面只在执行时经 UAC 启动隐藏的管理员进程。命令行新增 `system status|install|restore|clear-cache|cancel`。
+- 安装与还原：在「系统字体」页把字体包安装到系统、还原到任意一份备份、只清空字体缓存，都在下次重启时生效（MoveFileEx + PendingFileRenameOperations），换完字体后同一次重启里清空 `FontCache` 文件夹和 `FNTCACHE.DAT`。每次替换前把当前 6 个文件照原样备份（不论是否原版；非原版会提醒，但照样备份，因为它们往往比原版更难再找到），按哈希去重、按快照保存，只在用户要求时删除。安装前后两次校验哈希与字体身份；新文件沿用原文件的所有者和权限；数据文件夹受保护、拒绝被他人预先创建；重启前可取消，失败会完整回滚。界面只在执行时经 UAC 启动隐藏的管理员进程。命令行新增 `system status|install|restore|forget|clear-cache|cancel`。
 - 自定义字体包加入 name ID 10 标记，系统字体页不会把装过的「微软字体改的自定义包」误认成原版；识别原版时也会看商标、厂商记录和 OS/2 厂商 ID。
 - hinted / unhinted 默认按屏幕自动判定：任一屏幕缩放低于 150% 或关闭字体平滑时用 hinted，全部 150% 及以上用 unhinted，检测不到时用 hinted；理由显示在界面上，可手动改。命令行新增 `-hint auto|hinted|unhinted` 与 `display` 子命令。自定义字体缺少 hinting 时，按同样的判断决定是提示还是警告。
 - Windows 构建：`build.cmd`（免执行策略）/ `build.ps1`（兼容 Windows PowerShell 5.1，检查 Go 版本与每一步退出码，可选 `-Test`、`-Arch arm64`）。

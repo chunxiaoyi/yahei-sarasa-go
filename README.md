@@ -12,7 +12,7 @@
 | --- | --- |
 | Sarasa 预设 | 两个按钮，一键下载 Sarasa 并生成、校验、打包 |
 | 自定义字体 | 拖入自己的字体，按预设同样的规则生成 |
-| 系统字体 | 查看这 6 个文件的现状；把字体包安装到系统、还原原版、清空字体缓存（重启生效） |
+| 系统字体 | 查看这 6 个文件的现状；把字体包安装到系统、还原到任意一份备份、清空字体缓存（重启生效） |
 | 设置 | Sarasa 来源（下载 / 本地文件夹或 zip）、版本、hinted / unhinted（默认按屏幕自动判定）、输出位置、代理与镜像 |
 
 ### 两个预设
@@ -77,7 +77,7 @@ output/
 
 - **为什么要重启**：这 6 个文件一直被系统和字体缓存服务占用，运行中无法覆盖。程序用 Windows 自带的「重启时替换」机制（MoveFileEx + PendingFileRenameOperations）：新文件先放进受保护的暂存文件夹，重启时由系统在加载字体之前换上。
 - **字体缓存**：同一次重启里，在换完字体之后删除 `C:\Windows\ServiceProfiles\LocalService\AppData\Local\FontCache` 里的全部文件和 `C:\Windows\System32\FNTCACHE.DAT`，缓存会用新字体重建。也可以单独「只清空字体缓存」。
-- **原版备份**：第一次安装前，把当前系统里的微软原版复制到 `C:\ProgramData\yahei-sarasa-go\originals` 并校验。系统字体如果已经被换过（不是微软原版），需要先导入一个保存着原版的备份文件夹，否则不允许安装。之后可随时「还原原版字体」。
+- **备份**：每次安装或还原之前，先把当前系统里的这 6 个文件照原样备份到 `C:\ProgramData\yahei-sarasa-go\backups`，不管是不是微软原版。不是原版的会在确认框里提醒，但照样备份——非原版字体往往比原版更难再找到，而微软原版随时可以从 Windows 安装镜像里取得。备份按文件哈希去重，同一个文件只存一份；每次替换前的状态都是一份可还原的快照。备份不会自动删除，只在你选「删除这份备份」时才删。
 - **安全检查**：字体包里的每个文件都要通过哈希（`SHA256SUMS.txt`）和身份检查（每个 face 的字体名、字重必须对应它的文件名；`segoeui.ttf` 不能含汉字映射），暂存后的副本会再查一次。换上去的文件沿用原文件的所有者和权限（TrustedInstaller）。`ProgramData` 下的数据文件夹设为只有管理员可写；它如果被其他账户预先创建，程序会拒绝使用。
 - **取消**：重启之前都可以「取消这次操作」，登记的操作和改过的文件权限都会撤回。
 - 界面本身不以管理员身份运行，只有执行这一步时才通过 UAC 启动一个隐藏的管理员进程。Windows 更新或 `sfc /scannow` 可能把字体换回原版，到时重新安装即可。
@@ -91,9 +91,10 @@ yahei-sarasa-cli build -preset semibold -source-dir D:\Sarasa      # 与旧版�
 yahei-sarasa-cli build -preset regular -out .\output -zip -cache auto
 yahei-sarasa-cli build -preset regular -hint auto -out .\output   # 按屏幕缩放自动选 hinted / unhinted
 yahei-sarasa-cli display                                          # 只看屏幕检测结果和建议
-yahei-sarasa-cli system status                                    # 系统字体、原版备份、待重启操作
+yahei-sarasa-cli system status                                    # 系统字体、备份、待重启操作
 yahei-sarasa-cli system install .\output\YaHei-Sarasa-Regular-1.0.42-hinted   # 以下需管理员终端
-yahei-sarasa-cli system restore
+yahei-sarasa-cli system restore [备份编号]                          # 默认最近一份
+yahei-sarasa-cli system forget 备份编号
 yahei-sarasa-cli system clear-cache
 yahei-sarasa-cli system cancel
 yahei-sarasa-cli custom -style regular A-Light.ttf A-Regular.ttf A-Medium.ttf A-Bold.ttf -out .\output -zip
@@ -173,7 +174,7 @@ internal/fetch          GitHub 发布查询、代理
 internal/remotezip      HTTP Range 读取 zip
 internal/pack           打包：manifest、校验和、说明、zip
 internal/sysfonts       系统字体状态与备份
-internal/sysinstall     安装 / 还原 / 清缓存：重启时替换、原版备份、权限与校验
+internal/sysinstall     安装 / 还原 / 清缓存：重启时替换、备份快照、权限与校验
 internal/display        屏幕缩放检测与 hinted / unhinted 判定
 internal/gui            本地服务与界面（web/ 内嵌）
 internal/platform       Windows 原生对话框、Edge 窗口、系统代理

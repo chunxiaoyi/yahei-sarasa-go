@@ -87,10 +87,10 @@ func usage() {
   custom  -font 文件 [选项]    用自己的字体生成
   inspect 文件... [-json]      体检字体文件（也可用来提取 Windows 原版字体信息）
   display [-json]              检测这台电脑的屏幕缩放，给出 hinted / unhinted 建议
-  system status                查看系统字体、原版备份和待重启操作
-  system install 字体包文件夹   安装到系统（重启后生效，同时清空字体缓存；需管理员）
-         [-import 备份文件夹]   系统字体已被换过、又没有原版备份时，从这里导入原版
-  system restore               还原原版（重启后生效；需管理员）
+  system status                查看系统字体、备份和待重启操作
+  system install 字体包文件夹   先备份当前字体，再安装到系统（重启后生效，同时清空字体缓存；需管理员）
+  system restore [备份编号]     还原到某份备份，默认最近一份（重启后生效；需管理员）
+  system forget 备份编号        删除一份备份（需管理员）
   system clear-cache           只清空字体缓存（重启后生效；需管理员）
   system cancel                取消还没重启生效的操作（需管理员）
   version
@@ -359,12 +359,11 @@ func runDisplay(args []string) error {
 
 func runSystem(args []string) error {
 	if len(args) == 0 {
-		return errors.New("system: 需要子命令：status、install、restore、clear-cache、cancel")
+		return errors.New("system: 需要子命令：status、install、restore、forget、clear-cache、cancel")
 	}
 	sub := args[0]
 	fs := flag.NewFlagSet("system "+sub, flag.ExitOnError)
 	resultID := fs.String("result", "", "write the outcome to the protected results folder (used by the GUI)")
-	importDir := fs.String("import", "", "folder holding genuine Windows originals")
 	asJSON := fs.Bool("json", false, "machine-readable status")
 	positional := parseInterspersed(fs, args[1:])
 
@@ -388,15 +387,22 @@ func runSystem(args []string) error {
 				mark = "（与安装记录一致）"
 			case f.Expected != nil:
 				mark = "（与安装记录不一致）"
-			case f.MatchesOriginal:
-				mark = "（原版）"
+			case f.BackedUp:
+				mark = "（已备份）"
 			}
 			fmt.Printf("  %-12s %-10s %s%s\n", f.Name, f.State, f.SHA256, mark)
 		}
-		if r.Originals != nil {
-			fmt.Printf("原版备份：%s（%s）\n", paths.OriginalsDir(), r.Originals.Created)
+		if len(r.Snapshots) == 0 {
+			fmt.Println("备份：还没有")
 		} else {
-			fmt.Println("原版备份：还没有")
+			fmt.Printf("备份（%s，共 %.1f MiB）：\n", paths.BackupsDir(), float64(r.BackupBytes)/(1<<20))
+			for _, s := range r.Snapshots {
+				note := ""
+				if len(s.NonOriginal) > 0 {
+					note = "，非原版：" + strings.Join(s.NonOriginal, "、")
+				}
+				fmt.Printf("  %s  %s%s\n", s.ID, s.Label, note)
+			}
 		}
 		if r.PendingActive {
 			fmt.Printf("待重启：%d 个操作\n", r.PendingCount)
@@ -419,9 +425,23 @@ func runSystem(args []string) error {
 			opErr = errors.New("system install: 需要一个字体包文件夹")
 			break
 		}
-		opErr = sysinstall.Install(sys, paths, positional[0], sysinstall.Options{ImportOriginals: *importDir}, logf)
+		opErr = sysinstall.Install(sys, paths, positional[0], logf)
 	case "restore":
-		opErr = sysinstall.Restore(sys, paths, logf)
+		id := ""
+		if len(positional) > 0 {
+			id = positional[0]
+		}
+		if id != "" && !sysinstall.ValidSnapshotID(id) {
+			opErr = fmt.Errorf("备份编号无效：%q（用 system status 查看）", id)
+			break
+		}
+		opErr = sysinstall.Restore(sys, paths, id, logf)
+	case "forget":
+		if len(positional) != 1 {
+			opErr = errors.New("system forget: 需要一个备份编号（用 system status 查看）")
+			break
+		}
+		opErr = sysinstall.Forget(sys, paths, positional[0], logf)
 	case "clear-cache":
 		opErr = sysinstall.ClearCache(sys, paths, logf)
 	case "cancel":
