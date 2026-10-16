@@ -24,6 +24,7 @@ import (
 
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/app"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/custom"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/display"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/fetch"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/gui"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
@@ -52,6 +53,8 @@ func main() {
 		err = runCustom(ctx, args[1:])
 	case args[0] == "inspect":
 		err = runInspect(args[1:])
+	case args[0] == "display":
+		err = runDisplay(args[1:])
 	case args[0] == "version" || args[0] == "-version" || args[0] == "--version":
 		fmt.Println("yahei-sarasa-go", app.Version)
 	case args[0] == "help" || args[0] == "-h" || args[0] == "--help" || args[0] == "-help":
@@ -80,13 +83,15 @@ func usage() {
   build   [选项]               生成 Sarasa 预设（不写 build 直接给选项也可以，兼容旧用法）
   custom  -font 文件 [选项]    用自己的字体生成
   inspect 文件... [-json]      体检字体文件（也可用来提取 Windows 原版字体信息）
+  display [-json]              检测这台电脑的屏幕缩放，给出 hinted / unhinted 建议
   version
 
 build 选项：
   -preset semibold|regular     semibold = 原 main 分支（默认），regular = 原 regular 分支
   -source-dir 目录或zip        使用本地 SarasaUiSC-*.ttf，不联网
   -version 1.0.42              固定 Sarasa 版本（默认最新）
-  -hinted=true                 使用 hinted 包
+  -hint auto|hinted|unhinted   auto = 按这台电脑的屏幕缩放自动判定（任一屏幕低于 150% 用 hinted）
+  -hinted=true                 旧参数，等同 -hint hinted / unhinted；不给 -hint 时沿用它（默认 hinted）
   -result ./result             输出目录（只放 6 个字体，与旧版完全一致）
   -out 目录                    改为生成完整的包（fonts/ + manifest + 校验 + 说明）
   -zip                         与 -out 一起：额外打成 zip
@@ -128,7 +133,8 @@ func runBuild(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("build", flag.ExitOnError)
 	opt := app.PresetOptions{}
 	fs.StringVar(&opt.Preset, "preset", "semibold", "semibold (main) or regular")
-	fs.BoolVar(&opt.Hinted, "hinted", true, "use hinted Sarasa UI TTF package")
+	fs.BoolVar(&opt.Hinted, "hinted", true, "use hinted Sarasa UI TTF package (ignored when -hint is given)")
+	hint := fs.String("hint", "", "auto, hinted or unhinted (auto decides from this computer's display scaling)")
 	tempDir := fs.String("temp", "./temp", "temporary directory")
 	fs.StringVar(&opt.ResultDir, "result", "./result", "result directory (exactly the six fonts)")
 	fs.BoolVar(&opt.KeepTemp, "keep-temp", false, "keep extracted Sarasa source TTF files")
@@ -142,6 +148,13 @@ func runBuild(ctx context.Context, args []string) error {
 	_ = fs.Parse(args)
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected arguments: %v", fs.Args())
+	}
+	if *hint != "" {
+		mode, err := display.ParseMode(*hint)
+		if err != nil {
+			return err
+		}
+		opt.Hinted, opt.HintNote = display.Resolve(mode, display.Detect)
 	}
 	opt.CacheDir = cacheRoot(*cache)
 	opt.TempDir = *tempDir
@@ -253,13 +266,21 @@ func runCustom(ctx context.Context, args []string) error {
 	}
 
 	ev := custom.Evaluate(faces, req)
+	if info := display.Detect(); info.Supported && len(info.Monitors) > 0 {
+		rec := display.Recommend(info)
+		custom.ApplyDisplayContext(&ev, true, rec.Hinted, rec.Basis)
+	}
 	printEvaluation(ev)
 	if !ev.CanBuild {
 		_, err := custom.ToRecipe(faces, ev)
 		return err
 	}
 	sink := progress.Console(os.Stdout)
-	_, err = app.RunCustom(ctx, app.CustomOptions{Faces: faces, Request: req, ResultDir: *result, OutRoot: *out, Zip: *zipIt, Name: *name}, sink)
+	copt := app.CustomOptions{Faces: faces, Request: req, ResultDir: *result, OutRoot: *out, Zip: *zipIt, Name: *name}
+	info := display.Detect()
+	rec := display.Recommend(info)
+	copt.DisplayDetected, copt.HintingMatters, copt.DisplayBasis = info.Supported && len(info.Monitors) > 0, rec.Hinted, rec.Basis
+	_, err = app.RunCustom(ctx, copt, sink)
 	return err
 }
 
@@ -302,6 +323,29 @@ func sevLabel(s custom.Severity) string {
 		return "注意"
 	}
 	return "信息"
+}
+
+func runDisplay(args []string) error {
+	fs := flag.NewFlagSet("display", flag.ExitOnError)
+	asJSON := fs.Bool("json", false, "machine-readable output")
+	_ = fs.Parse(args)
+	info := display.Detect()
+	rec := display.Recommend(info)
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(map[string]any{"info": info, "recommendation": rec})
+	}
+	fmt.Println(display.Describe(info))
+	for i, m := range info.Monitors {
+		fmt.Printf("  屏幕 %d  %-14s %5d×%-5d  DPI %3d  缩放 %d%%  主屏 %v\n", i+1, m.Name, m.Width, m.Height, m.DPI, m.Scale, m.Primary)
+	}
+	choice := "unhinted"
+	if rec.Hinted {
+		choice = "hinted"
+	}
+	fmt.Printf("建议：%s\n理由：%s\n", choice, rec.Reason)
+	return nil
 }
 
 func runInspect(args []string) error {

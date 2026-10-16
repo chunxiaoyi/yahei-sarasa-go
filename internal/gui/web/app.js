@@ -56,7 +56,10 @@ function showTab(name) {
   $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('.panel').forEach((p) => { p.hidden = p.dataset.panel !== name; });
   if (name === 'system') loadSystem();
+  if (name === 'settings' || name === 'presets') refreshDisplay();
 }
+// Scaling and monitors can change while the window is open.
+window.addEventListener('focus', () => { if (state.info) refreshDisplay(); });
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
 // ---------------------------------------------------------------- presets
@@ -76,6 +79,37 @@ function renderPresets() {
   renderSourceLine();
 }
 
+// effectiveHinted mirrors display.Resolve on the server.
+function effectiveHinted() {
+  const st = state.settings;
+  if (st.hintMode === 'hinted') return true;
+  if (st.hintMode === 'unhinted') return false;
+  const d = state.info && state.info.display;
+  return d ? d.recommendation.hinted : true;
+}
+
+function hintLabel() {
+  const kind = effectiveHinted() ? 'hinted' : 'unhinted';
+  return state.settings.hintMode === 'auto' ? `${kind}，按屏幕自动判定` : kind;
+}
+
+function renderHintDetect() {
+  const el = $('#hint-detect');
+  const d = state.info && state.info.display;
+  if (!el || !d) return;
+  const kind = d.recommendation.hinted ? 'hinted' : 'unhinted';
+  const local = state.settings.useLocal ? '（当前使用本地 Sarasa 文件，这项不起作用）' : '';
+  el.innerHTML = `检测结果：${esc(d.recommendation.basis)}。<br>自动判定为 <strong>${kind}</strong>：${esc(d.recommendation.reason)}。检测的是运行本程序的这台电脑；给别的电脑生成时请手动选择。${local}`;
+}
+
+async function refreshDisplay() {
+  try {
+    state.info.display = await api('/api/display');
+    renderHintDetect();
+    renderSourceLine();
+  } catch { /* keep the last result */ }
+}
+
 function renderSourceLine() {
   const st = state.settings;
   if (!st) return;
@@ -84,8 +118,8 @@ function renderSourceLine() {
     src = st.sarasaLocal ? `字体来源：本地 ${esc(st.sarasaLocal)}` : '字体来源：本地（还没选文件夹）';
   } else {
     const v = st.version ? ` Sarasa ${esc(st.version)}` : '最新版 Sarasa';
-    src = `字体来源：自动下载${v}（${st.hinted ? 'hinted' : 'unhinted'}）`;
-    const cached = (state.info.cached || []).filter((c) => c.endsWith(st.hinted ? '-hinted' : '-unhinted'));
+    src = `字体来源：自动下载${v}（${hintLabel()}）`;
+    const cached = (state.info.cached || []).filter((c) => c.endsWith(effectiveHinted() ? '-hinted' : '-unhinted'));
     if (cached.length) src += `，已缓存 ${esc(cached.map((c) => c.split('-')[0]).join('、'))}`;
   }
   const out = `输出到 ${esc(st.outRoot)}${st.zip ? '，并打包 ZIP' : ''}`;
@@ -499,7 +533,8 @@ function fillSettings() {
   const st = state.settings;
   const f = $('#settings');
   f.elements.outRoot.value = st.outRoot || '';
-  f.elements.hinted.checked = !!st.hinted;
+  $$('input[name="hintMode"]', f).forEach((r) => { r.checked = (st.hintMode || 'auto') === r.value; });
+  renderHintDetect();
   f.elements.zip.checked = !!st.zip;
   f.elements.version.value = st.version || '';
   f.elements.sarasaLocal.value = st.sarasaLocal || '';
@@ -519,7 +554,7 @@ function collectSettings() {
   const f = $('#settings');
   return {
     outRoot: f.elements.outRoot.value.trim(),
-    hinted: f.elements.hinted.checked,
+    hintMode: ($('input[name="hintMode"]:checked', f) || {}).value || 'auto',
     zip: f.elements.zip.checked,
     version: f.elements.version.value.trim(),
     useLocal: ($('input[name="useLocal"]:checked', f) || {}).value === 'true',
@@ -537,6 +572,7 @@ async function saveSettings() {
     status.style.color = '';
     status.textContent = '已保存';
     renderSourceLine();
+    renderHintDetect();
   } catch (err) {
     status.style.color = 'var(--err)';
     status.textContent = err.message;

@@ -122,7 +122,13 @@
             <button type="button" data-pick="sarasa-folder">文件夹…</button>
             <button type="button" data-pick="sarasa-zip">压缩包…</button>
           </div>
-          <label class="check"><input type="checkbox" name="hinted"> 使用 hinted 版（GDI 小字号更清晰，默认）</label>
+          <div class="hint-group" role="radiogroup" aria-labelledby="hint-title">
+            <span class="field-title" id="hint-title">hinted / unhinted</span>
+            <label class="radio"><input type="radio" name="hintMode" value="auto"> 按这台电脑的屏幕自动判定（推荐）</label>
+            <label class="radio"><input type="radio" name="hintMode" value="hinted"> 总是 hinted：低缩放屏幕上的小字更清晰</label>
+            <label class="radio"><input type="radio" name="hintMode" value="unhinted"> 总是 unhinted：文件约小一半，字形更接近设计</label>
+            <p class="detect" id="hint-detect" aria-live="polite"></p>
+          </div>
           <label class="field">Sarasa 版本
             <input name="version" placeholder="留空 = 最新版，例如 1.0.42">
           </label>

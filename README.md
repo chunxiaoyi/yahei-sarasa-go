@@ -13,7 +13,7 @@
 | Sarasa 预设 | 两个按钮，一键下载 Sarasa 并生成、校验、打包 |
 | 自定义字体 | 拖入自己的字体，按预设同样的规则生成 |
 | 系统字体 | 查看 `C:\Windows\Fonts` 中这 6 个文件的现状，一键备份并校验 |
-| 设置 | Sarasa 来源（下载 / 本地文件夹或 zip）、版本、hinted、输出位置、代理与镜像 |
+| 设置 | Sarasa 来源（下载 / 本地文件夹或 zip）、版本、hinted / unhinted（默认按屏幕自动判定）、输出位置、代理与镜像 |
 
 ### 两个预设
 
@@ -29,6 +29,21 @@
 | Segoe UI Regular | **SemiBold** | **Regular** |
 
 下载只通过 HTTP Range 取压缩包里需要的 4 个 `SarasaUiSC-*.ttf`（约 55 MiB，而不是 700 MiB 的整包），并缓存起来，第二个按钮不再联网。GitHub API 被限流时自动改走网页地址；可以设置代理（默认读取系统代理）或下载镜像前缀。
+
+### hinted 还是 unhinted
+
+hinted 包里带有 TrueType hinting 指令，小字号时把笔画对齐到像素格，传统（GDI）程序里的小字更清晰；代价是字形略偏离设计、文件约大一倍。决定效果的是每块屏幕的**缩放比例**，不是分辨率：9pt 界面字在 100% 下约 12 像素，在 150% 下约 18 像素。
+
+默认「自动」按运行本程序的这台电脑判定，界面上会写出检测结果和理由：
+
+| 情况 | 选择 |
+| --- | --- |
+| 任意一块屏幕缩放低于 150%（多屏按最低的那块） | hinted |
+| 所有屏幕都在 150% 及以上 | unhinted |
+| 关闭了字体平滑（无抗锯齿） | hinted |
+| 检测不到屏幕 | hinted |
+
+给别的电脑生成时请手动选择。自定义字体没有 hinting 时，体检会按同样的判断决定只是提示还是警告。
 
 ### 自定义字体
 
@@ -63,12 +78,14 @@ output/
 ```powershell
 yahei-sarasa-cli build -preset semibold -source-dir D:\Sarasa      # 与旧版用法一致，写入 .\result
 yahei-sarasa-cli build -preset regular -out .\output -zip -cache auto
+yahei-sarasa-cli build -preset regular -hint auto -out .\output   # 按屏幕缩放自动选 hinted / unhinted
+yahei-sarasa-cli display                                          # 只看屏幕检测结果和建议
 yahei-sarasa-cli custom -style regular A-Light.ttf A-Regular.ttf A-Medium.ttf A-Bold.ttf -out .\output -zip
 yahei-sarasa-cli custom -font Set.ttc -assign segoe=Latin.ttf -outputs msyh.ttc,msyhbd.ttc,segoeui.ttf
 yahei-sarasa-cli inspect C:\Windows\Fonts\msyh.ttc -json
 ```
 
-不带参数运行即打开图形界面。旧用法（只给 `-source-dir`、`-result`、`-hinted` 等参数）保持不变，`-preset` 默认 `semibold`。
+不带参数运行即打开图形界面。旧用法（只给 `-source-dir`、`-result`、`-hinted` 等参数）保持不变：`-preset` 默认 `semibold`，命令行不给 `-hint` 时仍按 `-hinted`（默认 hinted），图形界面默认自动判定。
 
 ## 构建
 
@@ -140,6 +157,7 @@ internal/fetch          GitHub 发布查询、代理
 internal/remotezip      HTTP Range 读取 zip
 internal/pack           打包：manifest、校验和、说明、zip
 internal/sysfonts       系统字体状态与备份
+internal/display        屏幕缩放检测与 hinted / unhinted 判定
 internal/gui            本地服务与界面（web/ 内嵌）
 internal/platform       Windows 原生对话框、Edge 窗口、系统代理
 ```

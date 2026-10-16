@@ -327,6 +327,29 @@ func FaceIssues(faces []*Face, ev Evaluation) []FaceIssueGroup {
 	return out
 }
 
+// ApplyDisplayContext rewrites the "no hinting" finding for the computer the
+// tool runs on: a warning when hinting matters there (a monitor below 150 %
+// scaling), a reassurance when it does not. Without detection it does nothing.
+func ApplyDisplayContext(ev *Evaluation, detected, hintingMatters bool, basis string) {
+	if !detected {
+		return
+	}
+	for gi := range ev.Faces {
+		for ii, is := range ev.Faces[gi].Issues {
+			if is.Code != "unhinted" {
+				continue
+			}
+			if hintingMatters {
+				ev.Faces[gi].Issues[ii] = issue(SevWarn, "unhinted",
+					"没有 TrueType hinting，而这台电脑的屏幕需要它（%s）：传统程序里的小字号会偏虚。字体如果有 hinted 版本，建议换用", basis)
+			} else {
+				ev.Faces[gi].Issues[ii] = issue(SevInfo, "unhinted",
+					"没有 TrueType hinting；这台电脑的屏幕缩放较高（%s），影响很小", basis)
+			}
+		}
+	}
+}
+
 // FaceIssueGroup is one face's findings.
 type FaceIssueGroup struct {
 	FaceID string       `json:"faceId"`

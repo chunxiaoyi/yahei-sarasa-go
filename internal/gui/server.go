@@ -19,6 +19,7 @@ import (
 
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/app"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/custom"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/display"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/fetch"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
@@ -30,7 +31,7 @@ import (
 // Settings persist between runs in <cache>/settings.json.
 type Settings struct {
 	OutRoot     string `json:"outRoot"`
-	Hinted      bool   `json:"hinted"`
+	HintMode    string `json:"hintMode"` // auto | hinted | unhinted
 	Zip         bool   `json:"zip"`
 	Version     string `json:"version"`     // "" = latest
 	UseLocal    bool   `json:"useLocal"`    // use SarasaLocal instead of downloading
@@ -75,6 +76,9 @@ type server struct {
 	files    map[string]*custom.File
 	order    []string
 
+	// detect reports the screens; tests replace it.
+	detect func() display.Info
+
 	clientsMu   sync.Mutex
 	clients     map[chan []byte]bool
 	firstClient chan struct{}
@@ -101,6 +105,7 @@ func newServer(opt Options) (*server, error) {
 		clients:     map[chan []byte]bool{},
 		firstClient: make(chan struct{}),
 		shutdown:    func() {},
+		detect:      display.Detect,
 	}
 	s.settings = s.loadSettings()
 	if opt.OutRoot != "" {
@@ -154,9 +159,24 @@ func writable(dir string) bool {
 func (s *server) settingsPath() string { return filepath.Join(s.cacheDir, "settings.json") }
 
 func (s *server) loadSettings() Settings {
-	st := Settings{OutRoot: defaultOutRoot(), Hinted: true, Zip: true, ProxyMode: "auto"}
+	st := Settings{OutRoot: defaultOutRoot(), HintMode: string(display.ModeAuto), Zip: true, ProxyMode: "auto"}
 	if b, err := os.ReadFile(s.settingsPath()); err == nil {
 		_ = json.Unmarshal(b, &st)
+		// Settings written before the hint mode existed carry "hinted": bool.
+		// An explicit false was a choice; true was the old default -> auto.
+		var old struct {
+			Hinted *bool `json:"hinted"`
+		}
+		if json.Unmarshal(b, &old) == nil && old.Hinted != nil && !strings.Contains(string(b), `"hintMode"`) {
+			if *old.Hinted {
+				st.HintMode = string(display.ModeAuto)
+			} else {
+				st.HintMode = string(display.ModeUnhinted)
+			}
+		}
+	}
+	if _, err := display.ParseMode(st.HintMode); err != nil {
+		st.HintMode = string(display.ModeAuto)
 	}
 	if st.OutRoot == "" {
 		st.OutRoot = defaultOutRoot()
@@ -182,6 +202,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/state", s.api(s.handleState))
 	mux.HandleFunc("/api/settings", s.api(s.handleSettings))
+	mux.HandleFunc("/api/display", s.api(s.handleDisplay))
 	mux.HandleFunc("/api/preset", s.api(s.handlePreset))
 	mux.HandleFunc("/api/cancel", s.api(s.handleCancel))
 	mux.HandleFunc("/api/pick", s.api(s.handlePick))
@@ -524,6 +545,7 @@ func (s *server) handleState(r *http.Request) (any, error) {
 		"fonts":     files,
 		"job":       jobView,
 		"systemDir": platform.SystemFontsDir(),
+		"display":   s.displayView(),
 		"sysProxy":  platform.SystemProxy(),
 	}, nil
 }
@@ -546,6 +568,11 @@ func (s *server) handleSettings(r *http.Request) (any, error) {
 	}
 	if !filepath.IsAbs(next.OutRoot) {
 		return nil, badRequest("输出文件夹需要是完整路径")
+	}
+	if m, err := display.ParseMode(next.HintMode); err != nil {
+		return nil, badRequest("%v", err)
+	} else {
+		next.HintMode = string(m)
 	}
 	switch next.ProxyMode {
 	case "auto", "direct", "custom":
@@ -582,6 +609,30 @@ func (s *server) proxyValue(st Settings) string {
 	return ""
 }
 
+// ---- display -----------------------------------------------------------------
+
+type displayView struct {
+	Info           display.Info           `json:"info"`
+	Recommendation display.Recommendation `json:"recommendation"`
+}
+
+func (s *server) displayView() displayView {
+	info := s.detect()
+	return displayView{Info: info, Recommendation: display.Recommend(info)}
+}
+
+// handleDisplay re-detects on demand: monitors and scaling can change while
+// the window is open (docking a laptop, changing the scale).
+func (s *server) handleDisplay(r *http.Request) (any, error) { return s.displayView(), nil }
+
+func (s *server) customDisplayOptions(opt *app.CustomOptions) {
+	info := s.detect()
+	r := display.Recommend(info)
+	opt.DisplayDetected = info.Supported && len(info.Monitors) > 0
+	opt.HintingMatters = r.Hinted
+	opt.DisplayBasis = r.Basis
+}
+
 // ---- presets ---------------------------------------------------------------
 
 func (s *server) handlePreset(r *http.Request) (any, error) {
@@ -598,8 +649,10 @@ func (s *server) handlePreset(r *http.Request) (any, error) {
 	s.mu.Lock()
 	st := s.settings
 	s.mu.Unlock()
+	mode, _ := display.ParseMode(st.HintMode)
+	hinted, hintNote := display.Resolve(mode, s.detect)
 	opt := app.PresetOptions{
-		Preset: p.ID, Hinted: st.Hinted, Version: st.Version,
+		Preset: p.ID, Hinted: hinted, HintNote: hintNote, Version: st.Version,
 		CacheDir: s.cacheDir, TempDir: filepath.Join(s.cacheDir, "tmp"),
 		Proxy: s.proxyValue(st), Mirror: st.Mirror,
 		OutRoot: st.OutRoot, Zip: st.Zip,
@@ -836,7 +889,11 @@ func (s *server) handleCustomPlan(r *http.Request) (any, error) {
 	if len(faces) == 0 {
 		return map[string]any{"empty": true}, nil
 	}
-	return custom.Evaluate(faces, req), nil
+	ev := custom.Evaluate(faces, req)
+	var d app.CustomOptions
+	s.customDisplayOptions(&d)
+	custom.ApplyDisplayContext(&ev, d.DisplayDetected, d.HintingMatters, d.DisplayBasis)
+	return ev, nil
 }
 
 func (s *server) handleCustomBuild(r *http.Request) (any, error) {
@@ -852,8 +909,10 @@ func (s *server) handleCustomBuild(r *http.Request) (any, error) {
 	if _, err := custom.ToRecipe(faces, ev); err != nil {
 		return nil, badRequest("%v", err)
 	}
+	opt := app.CustomOptions{Faces: faces, Request: req, OutRoot: st.OutRoot, Zip: st.Zip}
+	s.customDisplayOptions(&opt)
 	j, err := s.startJob("custom", "生成自定义字体包", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
-		res, err := app.RunCustom(ctx, app.CustomOptions{Faces: faces, Request: req, OutRoot: st.OutRoot, Zip: st.Zip}, sink)
+		res, err := app.RunCustom(ctx, opt, sink)
 		return res, "", err
 	})
 	if err != nil {

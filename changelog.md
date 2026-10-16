@@ -12,6 +12,7 @@
 - **命令行**：旧用法不变（`-preset` 默认 semibold）；新增 `build -out/-zip/-cache`、`custom`、`inspect`。
 - **验证**：两个原分支的输出哈希写入回归测试；`tools/validate_fonts.py` 用 fontTools 独立复核。
 - 版权字段（name ID 0）改为 `Made from sarasa by GPT and Claude`。它不参与 Windows 字体匹配；系统字体页仍把旧字符串识别为本工具生成。
+- hinted / unhinted 默认按屏幕自动判定：任一屏幕缩放低于 150% 或关闭字体平滑时用 hinted，全部 150% 及以上用 unhinted，检测不到时用 hinted；理由显示在界面上，可手动改。命令行新增 `-hint auto|hinted|unhinted` 与 `display` 子命令。自定义字体缺少 hinting 时，按同样的判断决定是提示还是警告。
 - Windows 构建：`build.cmd`（免执行策略）/ `build.ps1`（兼容 Windows PowerShell 5.1，检查 Go 版本与每一步退出码，可选 `-Test`、`-Arch arm64`）。
 - 修正：图形界面退出时关闭 gui.log（Windows 上被占用的文件无法删除或覆盖）。
 - Go 模块路径改为 `github.com/chunxiaoyi/yahei-sarasa-go`（与仓库名一致）。
