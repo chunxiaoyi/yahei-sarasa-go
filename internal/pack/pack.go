@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -108,6 +109,54 @@ func Prepare(root, name string) (pkgDir, fontsDir string, err error) {
 		_ = os.WriteFile(filepath.Join(pkgDir, ManifestName), b, 0o644)
 	}
 	return pkgDir, fontsDir, nil
+}
+
+// ReadManifest returns the manifest of a package folder made by this tool.
+func ReadManifest(dir string) (*Manifest, error) {
+	b, err := os.ReadFile(filepath.Join(dir, ManifestName))
+	if err != nil {
+		return nil, err
+	}
+	var m Manifest
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	if m.Marker != marker {
+		return nil, errors.New("not a yahei-sarasa-go package")
+	}
+	return &m, nil
+}
+
+// Listed is one package found under an output folder.
+type Listed struct {
+	Dir     string `json:"dir"`
+	Name    string `json:"name"`
+	Title   string `json:"title"`
+	Kind    string `json:"kind"`
+	Created string `json:"created"`
+	Files   int    `json:"files"`
+}
+
+// List finds complete packages directly under root, newest first.
+func List(root string) []Listed {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+	var out []Listed
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		dir := filepath.Join(root, e.Name())
+		m, err := ReadManifest(dir)
+		if err != nil || len(m.Outputs) == 0 {
+			continue // not ours, or an interrupted build
+		}
+		out = append(out, Listed{Dir: dir, Name: e.Name(), Title: m.Title, Kind: m.Kind, Created: m.Created, Files: len(m.Outputs)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Created > out[j].Created })
+	return out
 }
 
 func owned(dir string) bool {
@@ -224,6 +273,11 @@ func InstallNotes(m Manifest) string {
 	}
 	w("")
 	w("二、替换方法")
+	w("  推荐：在本工具的「系统字体」页选中这个包，点「安装到系统…」，确认并授权后重启电脑。")
+	w("  重启时 Windows 会先换上新字体、再清空字体缓存；第一次安装前会自动保存一份微软原版，")
+	w("  之后可在同一页「还原原版字体」。命令行（管理员终端）：yahei-sarasa-cli system install 本文件夹")
+	w("")
+	w("  手动方式：")
 	w("  这些文件与 C:\\Windows\\Fonts 中的同名系统字体一一对应，用它们覆盖同名文件即可。")
 	w("  系统字体受 TrustedInstaller 保护且一直被占用，Windows 运行时无法直接覆盖，")
 	w("  通常在 WinPE / 恢复环境的命令行中复制，或使用你惯用的替换方式。")
@@ -233,7 +287,8 @@ func InstallNotes(m Manifest) string {
 	w("    C:\\Windows\\System32\\FNTCACHE.DAT")
 	w("")
 	w("三、还原")
-	w("  用备份的原版文件按同样方式覆盖回去即可。")
+	w("  用本工具安装的：「系统字体」页 →「还原原版字体…」，重启生效。")
+	w("  手动替换的：用备份的原版文件按同样方式覆盖回去。")
 	w("")
 	w("四、校验")
 	w("  SHA256SUMS.txt 记录了每个字体文件的 SHA-256，manifest.json 记录了来源与每个 face 的身份。")

@@ -419,7 +419,14 @@ func (f *Face) Source() *recipe.Source {
 		}
 		copyright = "Made from " + name + " by yahei-sarasa-go"
 	}
-	var extra []config.NameRecord
+	// Name ID 10 marks the file as made by this tool, so the system-font
+	// page never mistakes an installed custom build of a Microsoft font
+	// (which keeps Microsoft's copyright) for a Windows original.
+	srcName := strings.TrimSpace(f.Facts.FullName)
+	if srcName == "" {
+		srcName = f.FileName
+	}
+	extra := []config.NameRecord{{PlatformID: 3, EncodingID: 1, LanguageID: 0x0409, NameID: 10, Value: config.CustomMarkerPrefix + srcName}}
 	if v := strings.TrimSpace(f.Facts.License); v != "" {
 		extra = append(extra, config.NameRecord{PlatformID: 3, EncodingID: 1, LanguageID: 0x0409, NameID: 13, Value: v})
 	}

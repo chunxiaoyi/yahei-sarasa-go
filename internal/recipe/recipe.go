@@ -101,6 +101,37 @@ var outputDefs = []outputDef{
 	{name: OutSimSunB, faces: []faceDef{{SlotSimSun, config.SimSunExtB}}},
 }
 
+// FaceIdentity is what Windows must find in one face of an output file.
+type FaceIdentity struct {
+	Family string `json:"family"` // Windows en-US name ID 1
+	Weight uint16 `json:"weight"`
+}
+
+// ExpectedFaces lists, in order, the faces an output file must contain.
+// The installer uses it to refuse a file that would not stand in correctly
+// for the system font of that name.
+func ExpectedFaces(output string) []FaceIdentity {
+	for _, d := range outputDefs {
+		if d.name != output {
+			continue
+		}
+		out := make([]FaceIdentity, 0, len(d.faces))
+		for _, fd := range d.faces {
+			spec := fd.spec("")
+			id := FaceIdentity{Weight: spec.Weight}
+			for _, r := range spec.Identity {
+				if r.PlatformID == 3 && r.LanguageID == 0x0409 && r.NameID == 1 {
+					id.Family = r.Value
+					break
+				}
+			}
+			out = append(out, id)
+		}
+		return out
+	}
+	return nil
+}
+
 // SlotsFor returns the slots an output file draws from.
 func SlotsFor(output string) []Slot {
 	for _, d := range outputDefs {

@@ -12,7 +12,7 @@
 | --- | --- |
 | Sarasa 预设 | 两个按钮，一键下载 Sarasa 并生成、校验、打包 |
 | 自定义字体 | 拖入自己的字体，按预设同样的规则生成 |
-| 系统字体 | 查看 `C:\Windows\Fonts` 中这 6 个文件的现状，一键备份并校验 |
+| 系统字体 | 查看这 6 个文件的现状；把字体包安装到系统、还原原版、清空字体缓存（重启生效） |
 | 设置 | Sarasa 来源（下载 / 本地文件夹或 zip）、版本、hinted / unhinted（默认按屏幕自动判定）、输出位置、代理与镜像 |
 
 ### 两个预设
@@ -69,7 +69,18 @@ output/
   YaHei-Sarasa-Regular-1.0.42-hinted.zip
 ```
 
-把 `fonts` 中的文件覆盖到 `C:\Windows\Fonts` 的同名文件即可（系统字体受保护且被占用，通常在 WinPE/恢复环境中复制）。替换前先在“系统字体”页备份原文件。
+安装见下一节；也可以手动把 `fonts` 中的文件覆盖到 `C:\Windows\Fonts` 的同名文件（系统字体受保护且一直被占用，手动方式通常要在 WinPE/恢复环境里复制）。
+
+### 安装与还原
+
+在「系统字体」页选一个字体包，点「安装到系统…」，确认后在 UAC 提示里授权，然后重启。
+
+- **为什么要重启**：这 6 个文件一直被系统和字体缓存服务占用，运行中无法覆盖。程序用 Windows 自带的「重启时替换」机制（MoveFileEx + PendingFileRenameOperations）：新文件先放进受保护的暂存文件夹，重启时由系统在加载字体之前换上。
+- **字体缓存**：同一次重启里，在换完字体之后删除 `C:\Windows\ServiceProfiles\LocalService\AppData\Local\FontCache` 里的全部文件和 `C:\Windows\System32\FNTCACHE.DAT`，缓存会用新字体重建。也可以单独「只清空字体缓存」。
+- **原版备份**：第一次安装前，把当前系统里的微软原版复制到 `C:\ProgramData\yahei-sarasa-go\originals` 并校验。系统字体如果已经被换过（不是微软原版），需要先导入一个保存着原版的备份文件夹，否则不允许安装。之后可随时「还原原版字体」。
+- **安全检查**：字体包里的每个文件都要通过哈希（`SHA256SUMS.txt`）和身份检查（每个 face 的字体名、字重必须对应它的文件名；`segoeui.ttf` 不能含汉字映射），暂存后的副本会再查一次。换上去的文件沿用原文件的所有者和权限（TrustedInstaller）。`ProgramData` 下的数据文件夹设为只有管理员可写；它如果被其他账户预先创建，程序会拒绝使用。
+- **取消**：重启之前都可以「取消这次操作」，登记的操作和改过的文件权限都会撤回。
+- 界面本身不以管理员身份运行，只有执行这一步时才通过 UAC 启动一个隐藏的管理员进程。Windows 更新或 `sfc /scannow` 可能把字体换回原版，到时重新安装即可。
 
 ## 命令行
 
@@ -80,6 +91,11 @@ yahei-sarasa-cli build -preset semibold -source-dir D:\Sarasa      # 与旧版�
 yahei-sarasa-cli build -preset regular -out .\output -zip -cache auto
 yahei-sarasa-cli build -preset regular -hint auto -out .\output   # 按屏幕缩放自动选 hinted / unhinted
 yahei-sarasa-cli display                                          # 只看屏幕检测结果和建议
+yahei-sarasa-cli system status                                    # 系统字体、原版备份、待重启操作
+yahei-sarasa-cli system install .\output\YaHei-Sarasa-Regular-1.0.42-hinted   # 以下需管理员终端
+yahei-sarasa-cli system restore
+yahei-sarasa-cli system clear-cache
+yahei-sarasa-cli system cancel
 yahei-sarasa-cli custom -style regular A-Light.ttf A-Regular.ttf A-Medium.ttf A-Bold.ttf -out .\output -zip
 yahei-sarasa-cli custom -font Set.ttc -assign segoe=Latin.ttf -outputs msyh.ttc,msyhbd.ttc,segoeui.ttf
 yahei-sarasa-cli inspect C:\Windows\Fonts\msyh.ttc -json
@@ -142,7 +158,7 @@ Windows PowerShell 里设置环境变量的写法：`$env:YSG_SARASA_DIR = "D:\S
 
 ## 安全
 
-图形界面是内置在程序里的本地网页：只监听 `127.0.0.1` 的随机端口，每次启动生成随机令牌，并校验 Host 头；窗口关闭后程序自动退出。程序只读取系统字体（用于状态与备份），不会修改 `C:\Windows`。
+图形界面是内置在程序里的本地网页：只监听 `127.0.0.1` 的随机端口，每次启动生成随机令牌，并校验 Host 头；窗口关闭后程序自动退出。程序平时只读取系统字体；只有你在「系统字体」页确认安装、还原或清缓存时，才会在 UAC 授权后登记重启时执行的操作。
 
 ## 结构
 
@@ -157,6 +173,7 @@ internal/fetch          GitHub 发布查询、代理
 internal/remotezip      HTTP Range 读取 zip
 internal/pack           打包：manifest、校验和、说明、zip
 internal/sysfonts       系统字体状态与备份
+internal/sysinstall     安装 / 还原 / 清缓存：重启时替换、原版备份、权限与校验
 internal/display        屏幕缩放检测与 hinted / unhinted 判定
 internal/gui            本地服务与界面（web/ 内嵌）
 internal/platform       Windows 原生对话框、Edge 窗口、系统代理

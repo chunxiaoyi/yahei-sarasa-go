@@ -53,6 +53,49 @@ func Status(dir string) []FileStatus {
 	return out
 }
 
+// StatusOf inspects one of the six files in any folder (the system Fonts
+// folder, or a backup the user points at).
+func StatusOf(dir, name string) FileStatus { return status(dir, name) }
+
+// Genuine reports whether a state counts as an original Microsoft file.
+func Genuine(state string) bool { return state == StateOriginal || state == StateMicrosoft }
+
+// fromMicrosoft looks for Microsoft in the copyright, trademark,
+// manufacturer, designer and vendor-URL records, and in the OS/2 vendor ID.
+// SimSun, for example, names its foundry in the copyright and Microsoft only
+// in other records.
+func fromMicrosoft(f *otfont.Font) bool {
+	if os2 := f.Tables["OS/2"]; len(os2) >= 62 && string(os2[58:62]) == "MS  " {
+		return true
+	}
+	recs, err := otfont.ParseNameRecords(f.Tables["name"])
+	if err != nil {
+		return false
+	}
+	for _, r := range recs {
+		switch r.NameID {
+		case 0, 7, 8, 9, 11:
+			if strings.Contains(r.Value, "Microsoft") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasCustomMarker(f *otfont.Font) bool {
+	recs, err := otfont.ParseNameRecords(f.Tables["name"])
+	if err != nil {
+		return false
+	}
+	for _, r := range recs {
+		if r.NameID == 10 && strings.HasPrefix(r.Value, config.CustomMarkerPrefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func status(dir, name string) FileStatus {
 	fs := FileStatus{Name: name, Path: findCaseInsensitive(dir, name)}
 	b, err := os.ReadFile(fs.Path)
@@ -78,9 +121,9 @@ func status(dir, name string) FileStatus {
 	switch {
 	case config.Windows11OriginalSHA256[name] == fs.SHA256:
 		fs.State = StateOriginal
-	case config.IsProjectCopyright(facts.Copyright):
+	case config.IsProjectCopyright(facts.Copyright) || hasCustomMarker(faces[0]):
 		fs.State = StateOurs
-	case strings.Contains(facts.Copyright, "Microsoft"):
+	case fromMicrosoft(faces[0]):
 		fs.State = StateMicrosoft
 	default:
 		fs.State = StateReplaced

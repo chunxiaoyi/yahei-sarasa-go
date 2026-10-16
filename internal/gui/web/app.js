@@ -188,6 +188,12 @@ function renderResult(j) {
   if (j.state !== 'done') {
     return `<div class="result failed"><p class="err">${esc(j.error || '未完成')}</p></div>`;
   }
+  if (j.kind === 'system') {
+    const reboot = j.action && j.action !== 'cancel'
+      ? '<button class="primary" data-reboot>现在重启</button>' : '';
+    return `<div class="result"><p>${esc(actionDone[j.action] || '完成')}</p>
+      <div class="result-actions">${reboot}<button data-goto="system">查看系统字体</button></div></div>`;
+  }
   if (j.backup) {
     return `<div class="result"><p>已备份到：</p><p class="hash">${esc(j.backup)}</p>
       <div class="result-actions"><button data-reveal="${esc(j.backup)}">打开备份文件夹</button></div></div>`;
@@ -204,12 +210,14 @@ function renderResult(j) {
     <div class="result-actions">
       <button class="primary" data-reveal="${esc(r.packageDir ? r.packageDir + sep() + 'fonts' : dir)}">打开字体文件夹</button>
       ${r.zipPath ? `<button data-reveal="${esc(r.zipPath)}">显示 ZIP</button>` : ''}
+      ${r.packageDir && state.info.canElevate ? `<button data-install="${esc(r.packageDir)}">安装到系统…</button>` : ''}
     </div>${warn}</div>`;
 }
 
 function sep() { return state.info && state.info.os === 'windows' ? '\\' : '/'; }
 
 function setBusy(busy) {
+  $$('[data-ok]').forEach((b) => { b.disabled = !!busy || b.dataset.ok !== '1'; });
   $$('[data-preset], #build-custom, #backup').forEach((b) => {
     if (b.id === 'build-custom') b.disabled = busy || !(state.plan && state.plan.canBuild);
     else b.disabled = !!busy;
@@ -251,7 +259,7 @@ function connect() {
     state.job = { ...j, events };
     renderJob();
     if (j.state !== 'running') refreshCached();
-    if (j.kind === 'backup' && j.state === 'done') loadSystem();
+    if ((j.kind === 'backup' || j.kind === 'system') && j.state !== 'running') loadSystem();
   });
   es.addEventListener('event', (m) => {
     const d = JSON.parse(m.data);
@@ -502,31 +510,176 @@ const stateLabel = {
   unknown: '无法读取',
 };
 
+const actionDone = {
+  install: '已登记安装，重启后生效（同时清空字体缓存）',
+  restore: '已登记还原原版，重启后生效（同时清空字体缓存）',
+  'clear-cache': '已登记清空字体缓存，重启后生效',
+  cancel: '已取消待重启的操作',
+};
+
+let systemSeq = 0;
 async function loadSystem() {
+  const seq = ++systemSeq;
   const box = $('#system-body');
   try {
-    const r = await api('/api/system');
+    const [r, pk] = await Promise.all([api('/api/system'), api('/api/packages').catch(() => ({ packages: [] }))]);
+    if (seq !== systemSeq) return;
     if (!r.supported) {
-      box.innerHTML = '<p class="note">只有在 Windows 上运行时才能查看和备份系统字体。</p>';
+      $('#sys-status').innerHTML = '';
+      $('#sys-actions').innerHTML = '';
+      box.innerHTML = '<p class="note">只有在 Windows 上运行时才能查看、安装和还原系统字体。</p>';
       return;
     }
-    const rows = r.files.map((f) => `<tr>
+    renderSysStatus(r);
+    renderSysActions(r, pk.packages || []);
+    const rows = r.files.map((f) => {
+      let note = '';
+      if (f.expected !== undefined && f.expected !== null) note = f.matchesInstalled ? '与安装记录一致' : '与安装记录不一致';
+      else if (f.matchesOriginal) note = '与原版备份一致';
+      return `<tr>
       <td>${esc(f.name)}</td>
-      <td><span class="state ${esc(f.state)}">${esc(stateLabel[f.state] || f.state)}</span>${f.copyright && f.state !== 'original' ? `<div class="file-meta">${esc(f.copyright.slice(0, 80))}</div>` : ''}</td>
+      <td><span class="state ${esc(f.state)}">${esc(stateLabel[f.state] || f.state)}</span>${note ? `<div class="file-meta">${esc(note)}</div>` : ''}${f.copyright && f.state !== 'original' && f.state !== 'ours' ? `<div class="file-meta">${esc(f.copyright.slice(0, 80))}</div>` : ''}</td>
       <td>${f.size ? mib(f.size) : ''}</td>
-      <td class="hash" ${f.sha256 ? `data-copy="${esc(f.sha256)}" title="点击复制"` : ''}>${esc(f.sha256 || f.error || '')}</td></tr>`).join('');
+      <td class="hash" ${f.sha256 ? `data-copy="${esc(f.sha256)}" title="点击复制"` : ''}>${esc(f.sha256 || f.error || '')}</td></tr>`;
+    }).join('');
     box.innerHTML = `<table class="sys"><thead><tr><th>文件</th><th>状态</th><th>大小</th><th>SHA-256</th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="sys-actions">
-        <button class="primary" id="backup">备份这 6 个文件</button>
-        <button data-reveal="${esc(r.dir)}">打开 ${esc(r.dir)}</button>
-      </div>
-      <p class="note">备份会复制到输出文件夹下的「系统字体备份-日期」中，并逐个校验哈希。读取系统字体不需要管理员权限；替换需要在 WinPE/恢复环境或你惯用的方式中进行。</p>`;
-    $('#backup').addEventListener('click', () => api('/api/system/backup', {}).catch((e) => toast(e.message)));
+      <p class="note">状态由文件哈希和字体里的版权、厂商信息判断；与金标准哈希一致即为 Windows 11 原版。Windows 更新或 <code>sfc /scannow</code> 可能把字体换回原版，到时重新安装即可。</p>`;
     setBusy(state.job && state.job.state === 'running');
   } catch (err) {
     box.innerHTML = `<p class="file-error">${esc(err.message)}</p>`;
   }
 }
+
+function renderSysStatus(r) {
+  const rep = r.report;
+  if (!rep) {
+    $('#sys-status').innerHTML = r.error ? `<div class="sys-card failed"><span class="msg">${esc(r.error)}</span></div>` : '';
+    return;
+  }
+  const o = rep.originals;
+  const orig = o
+    ? `原版备份：已保存（${esc((o.created || '').replace('T', ' ').slice(0, 16))}）<button class="link" data-reveal="${esc(rep.paths.dataDir + sep() + 'originals')}">打开</button>`
+    : '原版备份：还没有（第一次安装时自动建立）';
+  let actions = '';
+  if (rep.pendingActive) {
+    actions = `<div class="row"><button class="primary" data-reboot>现在重启</button><button data-sys="cancel" data-ok="${r.canElevate ? 1 : 0}">取消这次操作…</button></div>`;
+  }
+  const pend = rep.pendingActive ? `<span class="meta">已登记 ${rep.pendingCount} 个重启时执行的操作</span>` : '';
+  $('#sys-status').innerHTML = `<div class="sys-card ${esc(rep.phase)}">
+    <span class="msg">${esc(rep.message)}</span>
+    <span class="meta">${orig}</span>${pend}${actions}</div>`;
+}
+
+let packageChoice = '';
+function renderSysActions(r, packages) {
+  const rep = r.report;
+  const canRun = !!r.canElevate && !!rep;
+  const opts = packages.map((p) => `<option value="${esc(p.dir)}" ${p.dir === packageChoice ? 'selected' : ''}>${esc(p.title || p.name)}（${esc((p.created || '').replace('T', ' ').slice(0, 16))}）</option>`).join('');
+  const other = packageChoice && !packages.some((p) => p.dir === packageChoice)
+    ? `<option value="${esc(packageChoice)}" selected>${esc(packageChoice)}</option>` : '';
+  $('#sys-actions').innerHTML = `<div class="sys-ops">
+    <div class="install">
+      <label class="visually-hidden" for="pkg-select">要安装的字体包</label>
+      <select id="pkg-select">${opts}${other}${!opts && !other ? '<option value="">输出文件夹里还没有字体包</option>' : ''}</select>
+      ${state.info.canPick ? '<button id="pkg-other">其他文件夹…</button>' : ''}
+      <button class="primary" id="pkg-install" data-ok="${canRun ? 1 : 0}">安装到系统…</button>
+    </div>
+    <div class="row">
+      <button data-sys="restore" data-ok="${canRun && rep.originals ? 1 : 0}" title="${rep && rep.originals ? '' : '还没有原版备份'}">还原原版字体…</button>
+      <button data-sys="clear-cache" data-ok="${canRun ? 1 : 0}">只清空字体缓存…</button>
+      <button id="backup">把当前 6 个文件另存一份</button>
+      <button data-reveal="${esc(r.dir)}">打开 Fonts 文件夹</button>
+    </div>
+  </div>`;
+  $('#pkg-select').addEventListener('change', (e) => { packageChoice = e.target.value; });
+  if (!packageChoice && packages[0]) packageChoice = packages[0].dir;
+  const other2 = $('#pkg-other');
+  if (other2) other2.addEventListener('click', async () => {
+    try {
+      const p = await api('/api/pick', { purpose: 'package' });
+      if (p.paths && p.paths[0]) { packageChoice = p.paths[0]; loadSystem(); }
+    } catch (err) { toast(err.message); }
+  });
+  $('#pkg-install').addEventListener('click', () => {
+    const v = $('#pkg-select').value;
+    if (!v) { toast('先生成一个字体包，或选择其他文件夹'); return; }
+    openPlan({ action: 'install', package: v });
+  });
+  $('#backup').addEventListener('click', () => api('/api/system/backup', {}).catch((e) => toast(e.message)));
+}
+
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-sys]');
+  if (b) { openPlan({ action: b.dataset.sys }); return; }
+  const rb = e.target.closest('[data-reboot]');
+  if (rb) {
+    if (!window.confirm('现在重启电脑？5 秒后开始重启，请先保存其他程序里的工作。')) return;
+    try { await api('/api/system/reboot', {}); toast('5 秒后重启'); } catch (err) { toast(err.message); }
+    return;
+  }
+  const inst = e.target.closest('[data-install]');
+  if (inst) {
+    packageChoice = inst.dataset.install;
+    showTab('system');
+    openPlan({ action: 'install', package: packageChoice });
+  }
+});
+
+const planTitles = { install: '安装字体包到系统', restore: '还原原版字体', 'clear-cache': '清空字体缓存', cancel: '取消待重启的操作' };
+let planReq = null;
+
+function list(items, cls) {
+  if (!items || !items.length) return '';
+  return `<ul class="issues ${cls || ''}">${items.map((x) => `<li class="${cls === 'blockers' ? 'error' : cls === 'warnings' ? 'warn' : ''}">${esc(x)}</li>`).join('')}</ul>`;
+}
+
+async function openPlan(req) {
+  planReq = req;
+  const dlg = $('#plan-dialog');
+  $('#plan-title').textContent = planTitles[req.action] || req.action;
+  $('#plan-body').innerHTML = '<p class="note">正在检查…</p>';
+  $('#plan-run').disabled = true;
+  if (!dlg.open) dlg.showModal();
+  let plan;
+  try {
+    plan = await api('/api/system/plan', req);
+  } catch (err) {
+    $('#plan-body').innerHTML = `<p class="file-error">${esc(err.message)}</p>`;
+    return;
+  }
+  const parts = [];
+  if (plan.package) parts.push(`<p><strong>${esc(plan.package.title || plan.package.name)}</strong><br><span class="hash">${esc(plan.package.dir)}</span></p>`);
+  if (plan.files && plan.files.length) {
+    parts.push(`<h3>会改变的文件</h3><table><thead><tr><th>文件</th><th>现在</th><th>重启后</th></tr></thead><tbody>${plan.files.map((f) => `<tr><td>${esc(f.name)}</td><td>${esc(stateLabel[f.current] || f.current)}</td><td>${esc(f.after)}</td></tr>`).join('')}</tbody></table>`);
+  }
+  if (plan.originals && plan.originals.length) {
+    const from = { system: '当前系统文件', import: '导入的备份', absent: '系统没有此文件（记为不存在）', none: '没有可用的原版' };
+    parts.push(`<h3>将要建立的原版备份</h3><table><thead><tr><th>文件</th><th>来源</th><th>状态</th></tr></thead><tbody>${plan.originals.map((o) => `<tr><td>${esc(o.name)}</td><td>${esc(from[o.from] || o.from)}</td><td>${esc(stateLabel[o.state] || o.state || '')}</td></tr>`).join('')}</tbody></table>`);
+  }
+  if (plan.steps && plan.steps.length) parts.push(`<h3>步骤</h3><ol>${plan.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>`);
+  parts.push(list(plan.warnings, 'warnings'));
+  parts.push(list(plan.blockers, 'blockers'));
+  if (plan.needsImport && state.info.canPick) {
+    parts.push(`<p><button type="button" id="plan-import">选择保存着原版的备份文件夹…</button> <span class="note">例如以前用「把当前 6 个文件另存一份」或手动复制的原版</span></p>`);
+  }
+  $('#plan-body').innerHTML = parts.join('');
+  const imp = $('#plan-import');
+  if (imp) imp.addEventListener('click', async () => {
+    try {
+      const p = await api('/api/pick', { purpose: 'originals' });
+      if (p.paths && p.paths[0]) openPlan({ ...planReq, import: p.paths[0] });
+    } catch (err) { toast(err.message); }
+  });
+  $('#plan-run').disabled = !!(plan.blockers && plan.blockers.length) || (state.job && state.job.state === 'running');
+}
+
+$('#plan-dialog').addEventListener('close', async () => {
+  const dlg = $('#plan-dialog');
+  if (dlg.returnValue !== 'run' || !planReq) return;
+  try {
+    await api('/api/system/run', planReq);
+  } catch (err) { toast(err.message); }
+});
 
 // ---------------------------------------------------------------- settings
 function fillSettings() {

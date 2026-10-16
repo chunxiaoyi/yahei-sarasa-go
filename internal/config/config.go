@@ -20,6 +20,10 @@ const Copyright = "Made from sarasa by GPT and Claude"
 // system-font page still recognises files made by v1.
 const LegacyCopyright = "Made from sarasa by GPT"
 
+// CustomMarkerPrefix starts the name ID 10 (description) record of every
+// custom-font build; presets carry no such record (their name ID 0 marks them).
+const CustomMarkerPrefix = "Made with yahei-sarasa-go from "
+
 // IsProjectCopyright reports whether s is a name ID 0 this project writes.
 func IsProjectCopyright(s string) bool { return s == Copyright || s == LegacyCopyright }
 

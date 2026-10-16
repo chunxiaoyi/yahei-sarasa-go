@@ -185,6 +185,33 @@ input:not([type]), input[type="text"] {
 .sys-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .note { color: var(--muted); font-size: 13px; max-width: 70ch; margin-top: 14px; }
 
+.sys-card { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--rule-strong); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: grid; gap: 6px; }
+.sys-card.pending { border-left-color: var(--mark-ink); background: var(--mark); color: var(--mark-ink); }
+.sys-card.applied, .sys-card.original { border-left-color: var(--ok); }
+.sys-card.failed { border-left-color: var(--err); }
+.sys-card.modified { border-left-color: var(--warn); }
+.sys-card .msg { font-weight: 600; }
+.sys-card .meta { font-size: 13px; color: var(--muted); }
+.sys-card.pending .meta { color: inherit; opacity: 0.85; }
+.sys-card .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.sys-ops { display: grid; gap: 12px; margin-bottom: 8px; }
+.sys-ops .install { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sys-ops select { min-width: 0; flex: 1 1 260px; max-width: 520px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--rule-strong); background: var(--surface); }
+.sys-ops .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+dialog { border: 1px solid var(--rule-strong); border-radius: 10px; padding: 0; background: var(--surface); color: var(--ink); width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); }
+dialog::backdrop { background: rgba(10, 14, 20, 0.45); }
+.plan { padding: 18px 20px; display: grid; gap: 12px; max-height: calc(100vh - 48px); overflow-y: auto; }
+.plan h2 { font-size: 18px; }
+.plan h3 { font-size: 14px; margin: 6px 0 0; }
+.plan ol { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-size: 13.5px; }
+.plan table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.plan th, .plan td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--rule); }
+.plan th { color: var(--muted); font-weight: 400; }
+.plan .blockers li { color: var(--err); }
+.plan .warnings li { color: var(--warn); }
+.plan-buttons { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--rule); padding-top: 12px; }
+
 /* settings */
 .settings { display: grid; gap: 18px; max-width: 680px; }
 .settings fieldset { border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); padding: 12px 16px 16px; margin: 0; display: grid; gap: 8px; }

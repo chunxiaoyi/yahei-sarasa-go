@@ -104,8 +104,11 @@
 
     <!-- System -------------------------------------------------------------->
     <section class="panel" data-panel="system" role="tabpanel" hidden>
-      <h2>当前系统字体</h2>
-      <p class="lede">替换前先备份这 6 个文件。状态由文件哈希和字体内的版权信息判断：与金标准哈希一致即为 Windows 11 原版。</p>
+      <h2>系统字体</h2>
+      <p class="lede">安装和还原都在下次重启时生效，并同时清空字体缓存。需要管理员授权；重启前可以取消。第一次安装前会自动把微软原版保存一份，用于以后还原。</p>
+      <div id="sys-status"></div>
+      <div id="sys-actions"></div>
+      <h3>当前文件</h3>
       <div id="system-body"></div>
     </section>
 
@@ -164,6 +167,17 @@
     <div id="job"></div>
   </aside>
 </div>
+
+<dialog id="plan-dialog" aria-labelledby="plan-title">
+  <form method="dialog" class="plan">
+    <h2 id="plan-title"></h2>
+    <div id="plan-body"></div>
+    <div class="plan-buttons">
+      <button value="cancel" class="ghost">取消</button>
+      <button value="run" class="primary" id="plan-run">以管理员身份执行</button>
+    </div>
+  </form>
+</dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script src="app.js"></script>

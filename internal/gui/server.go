@@ -21,11 +21,13 @@ import (
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/custom"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/display"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/fetch"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/pack"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/recipe"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sarasa"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sysfonts"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sysinstall"
 )
 
 // Settings persist between runs in <cache>/settings.json.
@@ -51,6 +53,7 @@ type job struct {
 	Error   string      `json:"error,omitempty"`
 	Result  *app.Result `json:"result,omitempty"`
 	Backup  string      `json:"backup,omitempty"`
+	Action  string      `json:"action,omitempty"` // system jobs: install, restore, clear-cache, cancel
 	Events  []jobEvent  `json:"events,omitempty"`
 	cancel  context.CancelFunc
 }
@@ -214,6 +217,10 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/api/custom/build", s.api(s.handleCustomBuild))
 	mux.HandleFunc("/api/system", s.api(s.handleSystem))
 	mux.HandleFunc("/api/system/backup", s.api(s.handleSystemBackup))
+	mux.HandleFunc("/api/system/plan", s.api(s.handleSystemPlan))
+	mux.HandleFunc("/api/system/run", s.api(s.handleSystemRun))
+	mux.HandleFunc("/api/system/reboot", s.api(s.handleSystemReboot))
+	mux.HandleFunc("/api/packages", s.api(s.handlePackages))
 
 	static := http.FileServer(http.FS(staticFS()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -532,21 +539,22 @@ func (s *server) handleState(r *http.Request) (any, error) {
 		outputs = append(outputs, outputView{o, recipe.SlotsFor(o), outputDesc[o]})
 	}
 	return map[string]any{
-		"version":   app.Version,
-		"os":        runtime.GOOS,
-		"canPick":   platform.CanPick(),
-		"settings":  st,
-		"cacheDir":  s.cacheDir,
-		"logPath":   s.log.path,
-		"cached":    sarasa.CachedVersions(s.cacheDir),
-		"presets":   presets,
-		"slots":     slots,
-		"outputs":   outputs,
-		"fonts":     files,
-		"job":       jobView,
-		"systemDir": platform.SystemFontsDir(),
-		"display":   s.displayView(),
-		"sysProxy":  platform.SystemProxy(),
+		"version":    app.Version,
+		"os":         runtime.GOOS,
+		"canPick":    platform.CanPick(),
+		"settings":   st,
+		"cacheDir":   s.cacheDir,
+		"logPath":    s.log.path,
+		"cached":     sarasa.CachedVersions(s.cacheDir),
+		"presets":    presets,
+		"slots":      slots,
+		"outputs":    outputs,
+		"fonts":      files,
+		"job":        jobView,
+		"systemDir":  platform.SystemFontsDir(),
+		"canElevate": platform.CanElevate(),
+		"display":    s.displayView(),
+		"sysProxy":   platform.SystemProxy(),
 	}, nil
 }
 
@@ -697,6 +705,15 @@ func (s *server) handlePick(r *http.Request) (any, error) {
 		opt = platform.PickOptions{Title: "选择包含 SarasaUiSC-*.ttf 的文件夹", Folder: true}
 	case "sarasa-zip":
 		opt = platform.PickOptions{Title: "选择 SarasaUi-TTF-*.zip", Filters: []platform.Filter{{Name: "Sarasa UI 压缩包 (*.zip)", Pattern: "*.zip"}}}
+	case "package":
+		opt = platform.PickOptions{Title: "选择字体包文件夹（含 fonts 子文件夹）", Folder: true}
+		s.mu.Lock()
+		if st, err := os.Stat(s.settings.OutRoot); err == nil && st.IsDir() {
+			opt.Initial = s.settings.OutRoot
+		}
+		s.mu.Unlock()
+	case "originals":
+		opt = platform.PickOptions{Title: "选择保存着微软原版字体的备份文件夹", Folder: true}
 	case "output":
 		opt = platform.PickOptions{Title: "选择输出文件夹", Folder: true}
 		s.mu.Lock()
@@ -928,8 +945,147 @@ func (s *server) handleSystem(r *http.Request) (any, error) {
 	if dir == "" {
 		return map[string]any{"supported": false}, nil
 	}
-	files := sysfonts.Status(dir)
-	return map[string]any{"supported": true, "dir": dir, "files": files}, nil
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		// Fall back to the read-only file table.
+		return map[string]any{"supported": true, "dir": dir, "files": sysfonts.Status(dir), "error": err.Error()}, nil
+	}
+	rep := sysinstall.GetStatus(sysinstall.System(), paths)
+	return map[string]any{"supported": true, "dir": dir, "files": rep.Files, "report": rep, "canElevate": platform.CanElevate()}, nil
+}
+
+type systemRequest struct {
+	Action  string `json:"action"`  // install, restore, clear-cache, cancel
+	Package string `json:"package"` // install: package folder
+	Import  string `json:"import"`  // install: folder with genuine originals
+}
+
+func (req systemRequest) validate() error {
+	switch req.Action {
+	case "install":
+		if strings.TrimSpace(req.Package) == "" {
+			return badRequest("请选择要安装的字体包")
+		}
+		if !filepath.IsAbs(req.Package) {
+			return badRequest("字体包需要是完整路径")
+		}
+	case "restore", "clear-cache", "cancel":
+	default:
+		return badRequest("unknown action %q", req.Action)
+	}
+	if req.Import != "" && !filepath.IsAbs(req.Import) {
+		return badRequest("备份文件夹需要是完整路径")
+	}
+	return nil
+}
+
+// handleSystemPlan is a dry run without privileges; the elevated helper
+// repeats every check itself.
+func (s *server) handleSystemPlan(r *http.Request) (any, error) {
+	var req systemRequest
+	if err := decode(r, &req); err != nil {
+		return nil, err
+	}
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		return sysinstall.Plan{Action: req.Action, Blockers: []string{err.Error()}}, nil
+	}
+	sys := sysinstall.System()
+	switch req.Action {
+	case "install":
+		return sysinstall.PlanInstall(sys, paths, req.Package, req.Import), nil
+	case "restore":
+		return sysinstall.PlanRestore(sys, paths), nil
+	case "clear-cache":
+		return sysinstall.PlanClearCache(sys, paths), nil
+	}
+	return sysinstall.Plan{Action: req.Action, Steps: []string{"移除本工具登记的待重启操作，并恢复改动过的文件权限"}}, nil
+}
+
+func (s *server) handleSystemRun(r *http.Request) (any, error) {
+	var req systemRequest
+	if err := decode(r, &req); err != nil {
+		return nil, err
+	}
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
+	if !platform.CanElevate() {
+		return nil, httpError{http.StatusNotImplemented, sysinstall.ErrUnsupported.Error()}
+	}
+	titles := map[string]string{"install": "安装字体包到系统", "restore": "还原原版字体", "clear-cache": "清空字体缓存", "cancel": "取消待重启的操作"}
+	j, err := s.startJob("system", titles[req.Action], func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+		return nil, "", s.runElevated(sink, req)
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	j.Action = req.Action
+	s.mu.Unlock()
+	return j.summary(), nil
+}
+
+// runElevated starts this program as `system <action>` through UAC and
+// relays the result it leaves in the protected results folder.
+func (s *server) runElevated(sink progress.Sink, req systemRequest) error {
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		return err
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	id, err := randomToken()
+	if err != nil {
+		return err
+	}
+	id = id[:32]
+	args := []string{"system", req.Action}
+	if req.Action == "install" {
+		args = append(args, req.Package)
+		if req.Import != "" {
+			args = append(args, "-import", req.Import)
+		}
+	}
+	args = append(args, "-result", id)
+	sink.Stage("elevate", "等待管理员授权：请在弹出的窗口里选择「是」")
+	code, err := platform.RunElevated(exe, args)
+	if err != nil {
+		return err
+	}
+	res, rerr := sysinstall.ReadResult(paths, id)
+	if rerr != nil {
+		return fmt.Errorf("管理员进程已退出（代码 %d），但没有留下结果：%v", code, rerr)
+	}
+	for _, line := range res.Log {
+		sink.Infof("%s", line)
+	}
+	if !res.OK {
+		return errors.New(res.Error)
+	}
+	return nil
+}
+
+func (s *server) handleSystemReboot(r *http.Request) (any, error) {
+	if r.Method != http.MethodPost {
+		return nil, httpError{http.StatusMethodNotAllowed, "POST required"}
+	}
+	if err := platform.Reboot(); err != nil {
+		return nil, err
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func (s *server) handlePackages(r *http.Request) (any, error) {
+	s.mu.Lock()
+	root := s.settings.OutRoot
+	s.mu.Unlock()
+	return map[string]any{"root": root, "packages": pack.List(root)}, nil
 }
 
 func (s *server) handleSystemBackup(r *http.Request) (any, error) {

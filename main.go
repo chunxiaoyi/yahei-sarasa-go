@@ -30,6 +30,7 @@ import (
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/recipe"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sysinstall"
 )
 
 func main() {
@@ -55,6 +56,8 @@ func main() {
 		err = runInspect(args[1:])
 	case args[0] == "display":
 		err = runDisplay(args[1:])
+	case args[0] == "system":
+		err = runSystem(args[1:])
 	case args[0] == "version" || args[0] == "-version" || args[0] == "--version":
 		fmt.Println("yahei-sarasa-go", app.Version)
 	case args[0] == "help" || args[0] == "-h" || args[0] == "--help" || args[0] == "-help":
@@ -84,6 +87,12 @@ func usage() {
   custom  -font 文件 [选项]    用自己的字体生成
   inspect 文件... [-json]      体检字体文件（也可用来提取 Windows 原版字体信息）
   display [-json]              检测这台电脑的屏幕缩放，给出 hinted / unhinted 建议
+  system status                查看系统字体、原版备份和待重启操作
+  system install 字体包文件夹   安装到系统（重启后生效，同时清空字体缓存；需管理员）
+         [-import 备份文件夹]   系统字体已被换过、又没有原版备份时，从这里导入原版
+  system restore               还原原版（重启后生效；需管理员）
+  system clear-cache           只清空字体缓存（重启后生效；需管理员）
+  system cancel                取消还没重启生效的操作（需管理员）
   version
 
 build 选项：
@@ -346,6 +355,93 @@ func runDisplay(args []string) error {
 	}
 	fmt.Printf("建议：%s\n理由：%s\n", choice, rec.Reason)
 	return nil
+}
+
+func runSystem(args []string) error {
+	if len(args) == 0 {
+		return errors.New("system: 需要子命令：status、install、restore、clear-cache、cancel")
+	}
+	sub := args[0]
+	fs := flag.NewFlagSet("system "+sub, flag.ExitOnError)
+	resultID := fs.String("result", "", "write the outcome to the protected results folder (used by the GUI)")
+	importDir := fs.String("import", "", "folder holding genuine Windows originals")
+	asJSON := fs.Bool("json", false, "machine-readable status")
+	positional := parseInterspersed(fs, args[1:])
+
+	sys := sysinstall.System()
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		return err
+	}
+	if sub == "status" {
+		r := sysinstall.GetStatus(sys, paths)
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(r)
+		}
+		fmt.Println(r.Message)
+		for _, f := range r.Files {
+			mark := ""
+			switch {
+			case f.Expected != nil && f.MatchesInstalled:
+				mark = "（与安装记录一致）"
+			case f.Expected != nil:
+				mark = "（与安装记录不一致）"
+			case f.MatchesOriginal:
+				mark = "（原版）"
+			}
+			fmt.Printf("  %-12s %-10s %s%s\n", f.Name, f.State, f.SHA256, mark)
+		}
+		if r.Originals != nil {
+			fmt.Printf("原版备份：%s（%s）\n", paths.OriginalsDir(), r.Originals.Created)
+		} else {
+			fmt.Println("原版备份：还没有")
+		}
+		if r.PendingActive {
+			fmt.Printf("待重启：%d 个操作\n", r.PendingCount)
+		}
+		return nil
+	}
+
+	var lines []string
+	logf := func(format string, a ...any) {
+		line := fmt.Sprintf(format, a...)
+		lines = append(lines, line)
+		if *resultID == "" {
+			fmt.Println("========>", line)
+		}
+	}
+	var opErr error
+	switch sub {
+	case "install":
+		if len(positional) != 1 {
+			opErr = errors.New("system install: 需要一个字体包文件夹")
+			break
+		}
+		opErr = sysinstall.Install(sys, paths, positional[0], sysinstall.Options{ImportOriginals: *importDir}, logf)
+	case "restore":
+		opErr = sysinstall.Restore(sys, paths, logf)
+	case "clear-cache":
+		opErr = sysinstall.ClearCache(sys, paths, logf)
+	case "cancel":
+		opErr = sysinstall.Cancel(sys, paths, logf)
+	default:
+		opErr = fmt.Errorf("system: 未知子命令 %q", sub)
+	}
+	if *resultID != "" {
+		r := sysinstall.Result{OK: opErr == nil, Log: lines}
+		if opErr != nil {
+			r.Error = opErr.Error()
+		}
+		if err := sysinstall.WriteResult(sys, paths, *resultID, r); err != nil {
+			return fmt.Errorf("写入结果失败：%w", err)
+		}
+	}
+	if errors.Is(opErr, sysinstall.ErrNotAdmin) {
+		return errors.New("需要管理员权限：请在「以管理员身份运行」的终端里执行，或使用图形界面（会弹出授权提示）")
+	}
+	return opErr
 }
 
 func runInspect(args []string) error {
