@@ -97,7 +97,10 @@ func RunPreset(ctx context.Context, opt PresetOptions, sink progress.Sink) (*Res
 	if opt.Local != "" {
 		hint = "local"
 	}
-	title := fmt.Sprintf("微软雅黑 ← Sarasa UI SC %s %s（%s 预设，原 %s 分支）", p.Name, src.Version, p.ID, p.Branch)
+	title := fmt.Sprintf("微软雅黑 ← Sarasa UI SC %s %s", src.Version, p.Name)
+	if hint != "local" {
+		title += " " + hint
+	}
 	name := pack.SafeName(fmt.Sprintf("YaHei-Sarasa-%s-%s-%s", map[string]string{"semibold": "SemiBold", "regular": "Regular"}[p.ID], src.Version, hint))
 
 	res := &Result{Kind: "preset", Title: title}
@@ -120,7 +123,7 @@ func RunPreset(ctx context.Context, opt PresetOptions, sink progress.Sink) (*Res
 	if pkgDir != "" {
 		sink.Stage("pack", "正在打包")
 		m := pack.Manifest{
-			Kind: "preset", Preset: p.ID, Branch: p.Branch, Title: title,
+			Kind: "preset", Preset: p.ID, Title: title,
 			Sarasa: map[string]any{"version": src.Version, "package": src.Package, "origin": src.Origin, "hinted": opt.Hinted, "hintChoice": opt.HintNote, "files": src.Files},
 			Slots:  slotLabels(slots), Sources: sourceInfos(plan), Outputs: outs,
 		}

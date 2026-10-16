@@ -66,7 +66,7 @@ $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.da
 function renderPresets() {
   const { presets, slots } = state.info;
   const by = Object.fromEntries(presets.map((p) => [p.id, p]));
-  const head = (p) => `<span class="preset-name">${esc(p.name)}</span><span class="preset-sub">原 ${esc(p.branch)} 分支</span>`;
+  const head = (p) => `<span class="preset-name">${esc(p.name)}</span>`;
   $('#col-semibold').innerHTML = head(by.semibold);
   $('#col-regular').innerHTML = head(by.regular);
   $('#matrix-body').innerHTML = slots.map((s) => {

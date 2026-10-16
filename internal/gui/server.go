@@ -489,7 +489,6 @@ func (s *server) handleCancel(r *http.Request) (any, error) {
 type presetView struct {
 	ID      string                 `json:"id"`
 	Name    string                 `json:"name"`
-	Branch  string                 `json:"branch"`
 	Summary string                 `json:"summary"`
 	Map     map[recipe.Slot]string `json:"map"`
 }
@@ -528,7 +527,7 @@ func (s *server) handleState(r *http.Request) (any, error) {
 
 	var presets []presetView
 	for _, p := range recipe.Presets {
-		presets = append(presets, presetView{p.ID, p.Name, p.Branch, p.Summary, p.Map})
+		presets = append(presets, presetView{p.ID, p.Name, p.Summary, p.Map})
 	}
 	var slots []slotView
 	for _, sl := range recipe.AllSlots {
@@ -671,7 +670,7 @@ func (s *server) handlePreset(r *http.Request) (any, error) {
 		}
 		opt.Local = st.SarasaLocal
 	}
-	j, err := s.startJob("preset", "生成 "+p.Name+"（原 "+p.Branch+" 分支）", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+	j, err := s.startJob("preset", "生成 "+p.Name, func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		res, err := app.RunPreset(ctx, opt, sink)
 		return res, "", err
 	})

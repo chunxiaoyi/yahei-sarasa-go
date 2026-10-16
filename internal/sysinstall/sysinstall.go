@@ -88,13 +88,12 @@ type Paths struct {
 	DataDir  string `json:"dataDir"`  // %ProgramData%\yahei-sarasa-go
 }
 
-func (p Paths) BackupsDir() string      { return filepath.Join(p.DataDir, "backups") }
-func (p Paths) ResultsDir() string      { return filepath.Join(p.DataDir, "results") }
-func (p Paths) blobsDir() string        { return filepath.Join(p.BackupsDir(), "files") }
-func (p Paths) snapshotsDir() string    { return filepath.Join(p.BackupsDir(), "snapshots") }
-func (p Paths) stagingRoot() string     { return filepath.Join(p.DataDir, "staging") }
-func (p Paths) statePath() string       { return filepath.Join(p.DataDir, "state.json") }
-func (p Paths) legacyOriginals() string { return filepath.Join(p.DataDir, "originals") }
+func (p Paths) BackupsDir() string   { return filepath.Join(p.DataDir, "backups") }
+func (p Paths) ResultsDir() string   { return filepath.Join(p.DataDir, "results") }
+func (p Paths) blobsDir() string     { return filepath.Join(p.BackupsDir(), "files") }
+func (p Paths) snapshotsDir() string { return filepath.Join(p.BackupsDir(), "snapshots") }
+func (p Paths) stagingRoot() string  { return filepath.Join(p.DataDir, "staging") }
+func (p Paths) statePath() string    { return filepath.Join(p.DataDir, "state.json") }
 
 // target is the system file for name, matching the case used on disk.
 func (p Paths) target(name string) string {

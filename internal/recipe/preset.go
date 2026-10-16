@@ -31,17 +31,15 @@ var SarasaFiles = []string{
 // Preset is a validated Sarasa slot mapping.
 type Preset struct {
 	ID      string // CLI / API identifier
-	Branch  string // the git branch this preset was validated as
 	Name    string // short display name
 	Summary string
 	Map     map[Slot]string // slot -> Sarasa basename (no extension)
 }
 
-// PresetSemiBold is the former "main" branch (D4): Sarasa UI SC SemiBold is
+// PresetSemiBold is D4 in GOLDEN.md: Sarasa UI SC SemiBold is
 // exposed as Microsoft YaHei Regular 400 and Segoe UI Regular 400.
 var PresetSemiBold = Preset{
 	ID:      "semibold",
-	Branch:  "main",
 	Name:    "SemiBold 版",
 	Summary: "用 Sarasa UI SC SemiBold 冒充微软雅黑 Regular，正文更粗、更醒目",
 	Map: map[Slot]string{
@@ -54,12 +52,11 @@ var PresetSemiBold = Preset{
 	},
 }
 
-// PresetRegular is the former "regular" branch (D4-Regular): the whole 400
+// PresetRegular is D4-Regular in GOLDEN.md: the whole 400
 // path (YaHei Regular and Segoe UI Regular) moves to true Sarasa Regular;
 // 600, Bold, Light and SimSun are unchanged from D4.
 var PresetRegular = Preset{
 	ID:      "regular",
-	Branch:  "regular",
 	Name:    "标准版",
 	Summary: "用 Sarasa UI SC Regular 冒充微软雅黑 Regular，字重接近原生",
 	Map: map[Slot]string{
@@ -76,7 +73,7 @@ var Presets = []Preset{PresetSemiBold, PresetRegular}
 
 func PresetByID(id string) (Preset, error) {
 	for _, p := range Presets {
-		if p.ID == id || p.Branch == id {
+		if p.ID == id {
 			return p, nil
 		}
 	}
@@ -98,8 +95,7 @@ func (p Preset) Files() []string {
 }
 
 // LoadSources parses the preset's Sarasa files from dir. Each file is parsed
-// once and shared by every slot that uses it, exactly like the original
-// program shared its regular/bold/light source objects.
+// once and shared by every slot that uses it.
 func (p Preset) LoadSources(dir string) (map[Slot]*Source, error) {
 	byBase := map[string]*Source{}
 	for _, file := range p.Files() {

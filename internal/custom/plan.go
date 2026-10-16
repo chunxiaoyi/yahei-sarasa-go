@@ -19,7 +19,7 @@ const (
 	// "regular" preset).
 	StyleRegular Style = "regular"
 	// StyleSemiBold: the face nearest 600 becomes YaHei/Segoe Regular 400
-	// (like the "semibold" preset, formerly main).
+	// (like the "semibold" preset).
 	StyleSemiBold Style = "semibold"
 )
 

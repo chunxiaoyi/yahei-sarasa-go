@@ -83,7 +83,7 @@ func usage() {
 	fmt.Print(`yahei-sarasa-go ` + app.Version + `
 
   (无参数)                     打开图形界面
-  build   [选项]               生成 Sarasa 预设（不写 build 直接给选项也可以，兼容旧用法）
+  build   [选项]               生成 Sarasa 预设（不写 build、直接给选项也可以）
   custom  -font 文件 [选项]    用自己的字体生成
   inspect 文件... [-json]      体检字体文件（也可用来提取 Windows 原版字体信息）
   display [-json]              检测这台电脑的屏幕缩放，给出 hinted / unhinted 建议
@@ -96,12 +96,12 @@ func usage() {
   version
 
 build 选项：
-  -preset semibold|regular     semibold = 原 main 分支（默认），regular = 原 regular 分支
+  -preset semibold|regular     semibold = 正文用 SemiBold（默认），regular = 正文用 Regular
   -source-dir 目录或zip        使用本地 SarasaUiSC-*.ttf，不联网
   -version 1.0.42              固定 Sarasa 版本（默认最新）
   -hint auto|hinted|unhinted   auto = 按这台电脑的屏幕缩放自动判定（任一屏幕低于 150% 用 hinted）
-  -hinted=true                 旧参数，等同 -hint hinted / unhinted；不给 -hint 时沿用它（默认 hinted）
-  -result ./result             输出目录（只放 6 个字体，与旧版完全一致）
+  -hinted=true|false           不给 -hint 时使用：true = hinted（默认），false = unhinted
+  -result ./result             输出目录（只放 6 个字体）
   -out 目录                    改为生成完整的包（fonts/ + manifest + 校验 + 说明）
   -zip                         与 -out 一起：额外打成 zip
   -cache 目录                  缓存下载的 Sarasa（"auto" = 用户缓存目录）

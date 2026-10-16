@@ -17,9 +17,9 @@
 
 ### 两个预设
 
-两个按钮就是原来的两个分支，逻辑原样保留。唯一的改动是版权字段（name ID 0）从 `Made from sarasa by GPT` 改为 `Made from sarasa by GPT and Claude`，它不参与 Windows 的字体匹配；换回旧字符串时，生成的文件与原分支**逐字节一致**（见下文“验证”）：
+两个预设只在 400 字重（正文和 Segoe UI）用的源字体不同，其余位置相同。两者都已在 Windows 11 上实测替换，输出由回归测试逐字节固定（见下文“验证”）：
 
-| Windows 看到的字体 | SemiBold 版（原 main） | 标准版（原 regular） |
+| Windows 看到的字体 | SemiBold 版 | 标准版 |
 | --- | --- | --- |
 | 微软雅黑 Light 300 | Light | Light |
 | 微软雅黑 Regular 400 | **SemiBold** | **Regular** |
@@ -87,7 +87,7 @@ output/
 `yahei-sarasa-cli.exe`（或任何平台上 `go run .`）：
 
 ```powershell
-yahei-sarasa-cli build -preset semibold -source-dir D:\Sarasa      # 与旧版用法一致，写入 .\result
+yahei-sarasa-cli build -preset semibold -source-dir D:\Sarasa      # 用本地 Sarasa，6 个字体写入 .\result
 yahei-sarasa-cli build -preset regular -out .\output -zip -cache auto
 yahei-sarasa-cli build -preset regular -hint auto -out .\output   # 按屏幕缩放自动选 hinted / unhinted
 yahei-sarasa-cli display                                          # 只看屏幕检测结果和建议
@@ -102,7 +102,7 @@ yahei-sarasa-cli custom -font Set.ttc -assign segoe=Latin.ttf -outputs msyh.ttc,
 yahei-sarasa-cli inspect C:\Windows\Fonts\msyh.ttc -json
 ```
 
-不带参数运行即打开图形界面。旧用法（只给 `-source-dir`、`-result`、`-hinted` 等参数）保持不变：`-preset` 默认 `semibold`，命令行不给 `-hint` 时仍按 `-hinted`（默认 hinted），图形界面默认自动判定。
+不带参数运行即打开图形界面。`-preset` 默认 `semibold`；命令行不给 `-hint` 时按 `-hinted`（默认 hinted），图形界面默认自动判定。
 
 ## 构建
 
@@ -154,7 +154,7 @@ python tools/validate_fonts.py output/<包名>      # 可选：用 fontTools 独
 
 Windows PowerShell 里设置环境变量的写法：`$env:YSG_SARASA_DIR = "D:\Sarasa"; go test ./internal/recipe -run RealSarasa -v`。目录里放 Sarasa 1.0.42 的四个 `SarasaUiSC-*.ttf`（或分别放 hinted/unhinted 的子文件夹）；哈希对不上的版本会自动跳过。
 
-- `internal/recipe/testdata/regression-sarasa.json` 记录了原 main（b9aa06c）与原 regular（ee9e874）程序对 Sarasa 1.0.42 hinted/unhinted 及一组合成字体的输出哈希。测试分两层：用旧版权字符串生成时，两个预设必须与这些哈希逐字节一致；正常生成时，每个文件的每个 face 只允许 name ID 0 这一条记录不同，其余所有表逐字节相同。合成字体那组每次 `go test` 都会跑。
+- `internal/recipe/testdata/regression-sarasa.json` 记录了两个预设对 Sarasa 1.0.42 hinted/unhinted 及一组合成字体的基准输出哈希，这些输出都在 Windows 11 上实测替换过。基准是用版权字段 `Made from sarasa by GPT` 生成的，所以测试分两层：用这个字符串生成时，必须与基准逐字节一致；正常生成时，每个文件的每个 face 只允许 name ID 0 这一条记录不同，其余所有表逐字节相同。合成字体那组每次 `go test` 都会跑。
 - `tools/validate_fonts.py` 用 fontTools 重新读一遍生成的文件，逐个 face 对照金标准记录、字重、fsSelection、ClearType 位与 Segoe 白名单。
 
 ## 安全

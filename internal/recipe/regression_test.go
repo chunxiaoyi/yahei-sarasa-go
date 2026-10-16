@@ -20,7 +20,6 @@ type regressionCase struct {
 	Sarasa  string            `json:"sarasa"`
 	Package string            `json:"package"`
 	Preset  string            `json:"preset"`
-	Branch  string            `json:"branch"`
 	Sources map[string]string `json:"sources"`
 	Outputs map[string]string `json:"outputs"`
 }
@@ -63,8 +62,8 @@ func hashDir(t *testing.T, dir string) map[string]string {
 
 // runRegression proves two things for one preset and source set:
 //
-//  1. Built with the v1 copyright string, all six outputs are byte-for-byte
-//     what the original branch program wrote (the fixture hashes).
+//  1. Built with config.BaselineCopyright, all six outputs match the pinned
+//     hashes byte for byte.
 //  2. Built normally, each output differs from (1) only in the name ID 0
 //     record; every other table of every face is byte-identical.
 func runRegression(t *testing.T, srcDir string, c regressionCase) {
@@ -72,9 +71,6 @@ func runRegression(t *testing.T, srcDir string, c regressionCase) {
 	p, err := PresetByID(c.Preset)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if p.Branch != c.Branch {
-		t.Fatalf("preset %s maps to branch %s, fixture says %s", p.ID, p.Branch, c.Branch)
 	}
 	slots, err := p.LoadSources(srcDir)
 	if err != nil {
@@ -87,7 +83,7 @@ func runRegression(t *testing.T, srcDir string, c regressionCase) {
 	}
 
 	legacy := t.TempDir()
-	setCopyright(config.LegacyCopyright)
+	setCopyright(config.BaselineCopyright)
 	if _, err := Build(Plan{Slots: slots}, legacy, nil); err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +94,7 @@ func runRegression(t *testing.T, srcDir string, c regressionCase) {
 	if !reflect.DeepEqual(got, c.Outputs) {
 		for name, want := range c.Outputs {
 			if got[name] != want {
-				t.Errorf("%s/%s %s: got %s want %s (original %s branch)", c.Sarasa, c.Preset, name, got[name], want, c.Branch)
+				t.Errorf("%s/%s %s: got %s want %s", c.Sarasa, c.Preset, name, got[name], want)
 			}
 		}
 		t.FailNow()
@@ -178,7 +174,7 @@ func compareNamesExceptCopyright(t *testing.T, where string, legacyTable, curren
 			t.Fatalf("%s: name record %d key changed", where, i)
 		}
 		if ra.NameID == 0 && ra.PlatformID == 3 && ra.LanguageID == 0x0409 {
-			if ra.Value != config.LegacyCopyright || rb.Value != config.Copyright {
+			if ra.Value != config.BaselineCopyright || rb.Value != config.Copyright {
 				t.Fatalf("%s: copyright %q -> %q", where, ra.Value, rb.Value)
 			}
 			continue
@@ -189,11 +185,11 @@ func compareNamesExceptCopyright(t *testing.T, where string, legacyTable, curren
 	}
 }
 
-// TestPresetsMatchOriginalBranchesSynthetic always runs: the synthetic
-// Sarasa-shaped fonts in testdata/synthetic were fed to the original main and
-// regular programs, and both presets must reproduce those files exactly
-// (with the v1 copyright string) and differ only in name ID 0 otherwise.
-func TestPresetsMatchOriginalBranchesSynthetic(t *testing.T) {
+// TestPresetsMatchBaselineSynthetic always runs: both presets built from the
+// synthetic Sarasa-shaped fonts in testdata/synthetic must reproduce the
+// pinned files exactly (with config.BaselineCopyright) and differ only in
+// name ID 0 otherwise.
+func TestPresetsMatchBaselineSynthetic(t *testing.T) {
 	n := 0
 	for _, c := range loadRegression(t) {
 		if c.Sarasa != "synthetic" {
@@ -207,11 +203,11 @@ func TestPresetsMatchOriginalBranchesSynthetic(t *testing.T) {
 	}
 }
 
-// TestPresetsMatchOriginalBranchesRealSarasa runs against real Sarasa files
+// TestPresetsMatchBaselineRealSarasa runs against real Sarasa files
 // when YSG_SARASA_DIR points at a directory holding the four SarasaUiSC TTFs
 // (or sub-directories of such). A case only runs when the source hashes in
 // the directory match the fixture, so any Sarasa release can sit there.
-func TestPresetsMatchOriginalBranchesRealSarasa(t *testing.T) {
+func TestPresetsMatchBaselineRealSarasa(t *testing.T) {
 	root := os.Getenv("YSG_SARASA_DIR")
 	if root == "" {
 		t.Skip("set YSG_SARASA_DIR to run the real-Sarasa byte-for-byte regression")
@@ -275,8 +271,5 @@ func TestPresetMappings(t *testing.T) {
 	}
 	if got := PresetRegular.Files(); len(got) != 4 {
 		t.Fatalf("regular files: %v", got)
-	}
-	if _, err := PresetByID("main"); err != nil {
-		t.Fatal("branch alias main should resolve")
 	}
 }

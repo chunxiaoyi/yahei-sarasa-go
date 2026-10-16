@@ -14,18 +14,17 @@ import (
 // what font viewers show as the copyright notice.
 const Copyright = "Made from sarasa by GPT and Claude"
 
-// LegacyCopyright is the name ID 0 written by v1 (the original main and
-// regular branches). The regression tests rebuild with it to prove that the
-// presets are otherwise byte-for-byte identical to those branches, and the
-// system-font page still recognises files made by v1.
-const LegacyCopyright = "Made from sarasa by GPT"
+// BaselineCopyright is the name ID 0 the regression baselines were recorded
+// with: rebuilding with it must reproduce them byte for byte. Fonts carrying
+// it are recognised as made by this project too.
+const BaselineCopyright = "Made from sarasa by GPT"
 
 // CustomMarkerPrefix starts the name ID 10 (description) record of every
 // custom-font build; presets carry no such record (their name ID 0 marks them).
 const CustomMarkerPrefix = "Made with yahei-sarasa-go from "
 
 // IsProjectCopyright reports whether s is a name ID 0 this project writes.
-func IsProjectCopyright(s string) bool { return s == Copyright || s == LegacyCopyright }
+func IsProjectCopyright(s string) bool { return s == Copyright || s == BaselineCopyright }
 
 // NameRecord is one raw OpenType name-table identity record extracted from the
 // official Windows 11 fonts supplied as the project's compatibility goldens.
@@ -59,7 +58,7 @@ type FontSpec struct {
 	Copyright string
 	// ExtraNames are non-identity records (custom builds only: the source
 	// font's license description / URL, name IDs 13 and 14). Presets never
-	// set them, so preset name tables stay byte-identical to D4/D4-Regular.
+	// set them, so preset name tables stay byte-identical to the baselines.
 	ExtraNames []NameRecord
 	// MacStyle, when non-nil, overwrites head.macStyle (custom builds only)
 	// so it agrees with the golden fsSelection. Presets leave it nil and

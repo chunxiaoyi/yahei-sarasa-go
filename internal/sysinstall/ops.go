@@ -32,7 +32,6 @@ func prepare(sys OS, p Paths, log Logf) (*State, error) {
 			return nil, err
 		}
 	}
-	migrateLegacyOriginals(p, log)
 	st, err := LoadState(p)
 	if err != nil {
 		return nil, err

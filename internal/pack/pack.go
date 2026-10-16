@@ -41,7 +41,6 @@ type Manifest struct {
 	Marker    string                 `json:"marker"`
 	Kind      string                 `json:"kind"` // "preset" or "custom"
 	Preset    string                 `json:"preset,omitempty"`
-	Branch    string                 `json:"branch,omitempty"`
 	Style     string                 `json:"style,omitempty"`
 	Title     string                 `json:"title"`
 	Created   string                 `json:"created"`
@@ -88,7 +87,7 @@ func Prepare(root, name string) (pkgDir, fontsDir string, err error) {
 		}
 		if err == nil && st.IsDir() && owned(pkgDir) {
 			if err := os.RemoveAll(pkgDir); err != nil {
-				return "", "", fmt.Errorf("无法覆盖旧的输出文件夹 %s：%w（是否被资源管理器或其他程序占用？）", pkgDir, err)
+				return "", "", fmt.Errorf("无法覆盖已有的同名输出文件夹 %s：%w（是否被资源管理器或其他程序占用？）", pkgDir, err)
 			}
 			_ = os.Remove(pkgDir + ".zip")
 			break
@@ -281,7 +280,7 @@ func InstallNotes(m Manifest) string {
 	w("  这些文件与 C:\\Windows\\Fonts 中的同名系统字体一一对应，用它们覆盖同名文件即可。")
 	w("  系统字体受 TrustedInstaller 保护且一直被占用，Windows 运行时无法直接覆盖，")
 	w("  通常在 WinPE / 恢复环境的命令行中复制，或使用你惯用的替换方式。")
-	w("  覆盖前务必备份原文件（程序里的「系统字体」页可以一键备份并校验原版）。")
+	w("  覆盖前务必备份当前文件（「系统字体」页的「把当前 6 个文件另存一份」可以一键复制）。")
 	w("  替换后重启。如果界面字体显示异常，可清理字体缓存后再重启：")
 	w("    C:\\Windows\\ServiceProfiles\\LocalService\\AppData\\Local\\FontCache 下的缓存文件")
 	w("    C:\\Windows\\System32\\FNTCACHE.DAT")

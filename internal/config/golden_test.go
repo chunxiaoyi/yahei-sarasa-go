@@ -83,10 +83,10 @@ func TestC1FSSelectionMatchesWindows11OriginalFaces(t *testing.T) {
 }
 
 func TestProjectCopyright(t *testing.T) {
-	if Copyright != "Made from sarasa by GPT and Claude" || LegacyCopyright != "Made from sarasa by GPT" {
-		t.Fatalf("copyright strings changed: %q / %q", Copyright, LegacyCopyright)
+	if Copyright != "Made from sarasa by GPT and Claude" || BaselineCopyright != "Made from sarasa by GPT" {
+		t.Fatalf("copyright strings changed: %q / %q", Copyright, BaselineCopyright)
 	}
-	for _, s := range []string{Copyright, LegacyCopyright} {
+	for _, s := range []string{Copyright, BaselineCopyright} {
 		if !IsProjectCopyright(s) {
 			t.Fatalf("%q not recognised", s)
 		}

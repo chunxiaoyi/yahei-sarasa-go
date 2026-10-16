@@ -95,7 +95,6 @@ button.link { border: 0; background: none; padding: 0; color: inherit; text-deco
 .matrix thead th { border-bottom: 2px solid var(--ink); padding-top: 16px; vertical-align: bottom; }
 .matrix thead th.corner { color: var(--muted); font-weight: 400; font-size: 13px; }
 .matrix .preset-name { display: block; font-size: 22px; line-height: 1.25; }
-.matrix .preset-sub { display: block; color: var(--muted); font-weight: 400; font-size: 13px; margin-top: 2px; }
 .matrix tbody th { font-weight: 400; white-space: nowrap; }
 .matrix tbody th .w { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 6px; }
 .matrix td.src { font-size: 15px; }

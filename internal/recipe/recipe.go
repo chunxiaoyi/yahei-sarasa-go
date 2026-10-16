@@ -1,11 +1,9 @@
 // Package recipe describes how Windows 11 font identities are filled with
 // glyph sources, and builds the six replacement files from that description.
 //
-// The two validated Sarasa variants (formerly the "main" and "regular" git
-// branches) are expressed as presets over the same build path. That build path
-// performs exactly the operations the D4 / D4-Regular programs performed, in
-// the same order, so preset output is byte-for-byte identical to them; the
-// regression tests in this package pin that.
+// The two validated Sarasa variants (D4 and D4-Regular in GOLDEN.md) are
+// presets over one build path. Their output is pinned byte for byte by the
+// regression tests in this package.
 package recipe
 
 import (
@@ -63,7 +61,7 @@ func (s Slot) Valid() bool {
 	return false
 }
 
-// Output file names, in the order the original program generated them.
+// Output file names, in generation order.
 const (
 	OutSegoeUI = "segoeui.ttf"
 	OutMSYH    = "msyh.ttc"
@@ -375,8 +373,7 @@ func describeFace(index int, slot Slot, spec config.FontSpec, src *Source) FaceI
 }
 
 // VerifyDir checks that dir contains exactly the named files and nothing
-// else (the original program's "exactly 6 files" contract, generalised to
-// custom output subsets).
+// else (all six for presets, a chosen subset for custom fonts).
 func VerifyDir(dir string, names []string) error {
 	want := map[string]bool{}
 	for _, n := range names {
