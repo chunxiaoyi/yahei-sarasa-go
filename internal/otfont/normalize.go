@@ -26,7 +26,7 @@ type NormalizeOptions struct {
 
 // Normalize prepares an arbitrary user font for the golden build path. It is
 // never applied to the Sarasa presets (whose output must stay byte-identical
-// to the validated D4 programs); for custom fonts it removes the things that
+// to the regression baselines); for custom fonts it removes the things that
 // would make a renamed font misbehave on Windows.
 func Normalize(src *Font, opt NormalizeOptions) (*Font, []Fix, error) {
 	// Shallow copy: every change below installs a new slice, so unchanged

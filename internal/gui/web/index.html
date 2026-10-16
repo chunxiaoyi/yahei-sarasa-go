@@ -104,8 +104,11 @@
 
     <!-- System -------------------------------------------------------------->
     <section class="panel" data-panel="system" role="tabpanel" hidden>
-      <h2>当前系统字体</h2>
-      <p class="lede">替换前先备份这 6 个文件。状态由文件哈希和字体内的版权信息判断：与金标准哈希一致即为 Windows 11 原版。</p>
+      <h2>系统字体</h2>
+      <p class="lede">安装和还原都在下次重启时生效，并同时清空字体缓存。需要管理员授权；重启前可以取消。每次替换前都会把当前的字体照原样备份——无论是不是原版——之后随时可以还原到任意一份。</p>
+      <div id="sys-status"></div>
+      <div id="sys-actions"></div>
+      <h3>当前文件</h3>
       <div id="system-body"></div>
     </section>
 
@@ -122,7 +125,13 @@
             <button type="button" data-pick="sarasa-folder">文件夹…</button>
             <button type="button" data-pick="sarasa-zip">压缩包…</button>
           </div>
-          <label class="check"><input type="checkbox" name="hinted"> 使用 hinted 版（GDI 小字号更清晰，默认）</label>
+          <div class="hint-group" role="radiogroup" aria-labelledby="hint-title">
+            <span class="field-title" id="hint-title">hinted / unhinted</span>
+            <label class="radio"><input type="radio" name="hintMode" value="auto"> 按这台电脑的屏幕自动判定（推荐）</label>
+            <label class="radio"><input type="radio" name="hintMode" value="hinted"> 总是 hinted：低缩放屏幕上的小字更清晰</label>
+            <label class="radio"><input type="radio" name="hintMode" value="unhinted"> 总是 unhinted：文件约小一半，字形更接近设计</label>
+            <p class="detect" id="hint-detect" aria-live="polite"></p>
+          </div>
           <label class="field">Sarasa 版本
             <input name="version" placeholder="留空 = 最新版，例如 1.0.42">
           </label>
@@ -158,6 +167,17 @@
     <div id="job"></div>
   </aside>
 </div>
+
+<dialog id="plan-dialog" aria-labelledby="plan-title">
+  <form method="dialog" class="plan">
+    <h2 id="plan-title"></h2>
+    <div id="plan-body"></div>
+    <div class="plan-buttons">
+      <button value="cancel" class="ghost">取消</button>
+      <button value="run" class="primary" id="plan-run">以管理员身份执行</button>
+    </div>
+  </form>
+</dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script src="app.js"></script>

@@ -19,18 +19,21 @@ import (
 
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/app"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/custom"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/display"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/fetch"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/pack"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/recipe"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sarasa"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sysfonts"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sysinstall"
 )
 
 // Settings persist between runs in <cache>/settings.json.
 type Settings struct {
 	OutRoot     string `json:"outRoot"`
-	Hinted      bool   `json:"hinted"`
+	HintMode    string `json:"hintMode"` // auto | hinted | unhinted
 	Zip         bool   `json:"zip"`
 	Version     string `json:"version"`     // "" = latest
 	UseLocal    bool   `json:"useLocal"`    // use SarasaLocal instead of downloading
@@ -50,6 +53,7 @@ type job struct {
 	Error   string      `json:"error,omitempty"`
 	Result  *app.Result `json:"result,omitempty"`
 	Backup  string      `json:"backup,omitempty"`
+	Action  string      `json:"action,omitempty"` // system jobs: install, restore, clear-cache, cancel
 	Events  []jobEvent  `json:"events,omitempty"`
 	cancel  context.CancelFunc
 }
@@ -74,6 +78,9 @@ type server struct {
 	jobSeq   int
 	files    map[string]*custom.File
 	order    []string
+
+	// detect reports the screens; tests replace it.
+	detect func() display.Info
 
 	clientsMu   sync.Mutex
 	clients     map[chan []byte]bool
@@ -101,6 +108,7 @@ func newServer(opt Options) (*server, error) {
 		clients:     map[chan []byte]bool{},
 		firstClient: make(chan struct{}),
 		shutdown:    func() {},
+		detect:      display.Detect,
 	}
 	s.settings = s.loadSettings()
 	if opt.OutRoot != "" {
@@ -112,7 +120,10 @@ func newServer(opt Options) (*server, error) {
 
 func (s *server) logf(format string, args ...any) { s.log.printf(format, args...) }
 
-func (s *server) cleanup() { _ = os.RemoveAll(s.uploadDir) }
+func (s *server) cleanup() {
+	s.log.close()
+	_ = os.RemoveAll(s.uploadDir)
+}
 
 func defaultCacheDir() string {
 	if d, err := os.UserCacheDir(); err == nil {
@@ -151,9 +162,24 @@ func writable(dir string) bool {
 func (s *server) settingsPath() string { return filepath.Join(s.cacheDir, "settings.json") }
 
 func (s *server) loadSettings() Settings {
-	st := Settings{OutRoot: defaultOutRoot(), Hinted: true, Zip: true, ProxyMode: "auto"}
+	st := Settings{OutRoot: defaultOutRoot(), HintMode: string(display.ModeAuto), Zip: true, ProxyMode: "auto"}
 	if b, err := os.ReadFile(s.settingsPath()); err == nil {
 		_ = json.Unmarshal(b, &st)
+		// Settings written before the hint mode existed carry "hinted": bool.
+		// An explicit false was a choice; true was the old default -> auto.
+		var old struct {
+			Hinted *bool `json:"hinted"`
+		}
+		if json.Unmarshal(b, &old) == nil && old.Hinted != nil && !strings.Contains(string(b), `"hintMode"`) {
+			if *old.Hinted {
+				st.HintMode = string(display.ModeAuto)
+			} else {
+				st.HintMode = string(display.ModeUnhinted)
+			}
+		}
+	}
+	if _, err := display.ParseMode(st.HintMode); err != nil {
+		st.HintMode = string(display.ModeAuto)
 	}
 	if st.OutRoot == "" {
 		st.OutRoot = defaultOutRoot()
@@ -179,6 +205,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/state", s.api(s.handleState))
 	mux.HandleFunc("/api/settings", s.api(s.handleSettings))
+	mux.HandleFunc("/api/display", s.api(s.handleDisplay))
 	mux.HandleFunc("/api/preset", s.api(s.handlePreset))
 	mux.HandleFunc("/api/cancel", s.api(s.handleCancel))
 	mux.HandleFunc("/api/pick", s.api(s.handlePick))
@@ -190,6 +217,10 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("/api/custom/build", s.api(s.handleCustomBuild))
 	mux.HandleFunc("/api/system", s.api(s.handleSystem))
 	mux.HandleFunc("/api/system/backup", s.api(s.handleSystemBackup))
+	mux.HandleFunc("/api/system/plan", s.api(s.handleSystemPlan))
+	mux.HandleFunc("/api/system/run", s.api(s.handleSystemRun))
+	mux.HandleFunc("/api/system/reboot", s.api(s.handleSystemReboot))
+	mux.HandleFunc("/api/packages", s.api(s.handlePackages))
 
 	static := http.FileServer(http.FS(staticFS()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -458,7 +489,6 @@ func (s *server) handleCancel(r *http.Request) (any, error) {
 type presetView struct {
 	ID      string                 `json:"id"`
 	Name    string                 `json:"name"`
-	Branch  string                 `json:"branch"`
 	Summary string                 `json:"summary"`
 	Map     map[recipe.Slot]string `json:"map"`
 }
@@ -497,7 +527,7 @@ func (s *server) handleState(r *http.Request) (any, error) {
 
 	var presets []presetView
 	for _, p := range recipe.Presets {
-		presets = append(presets, presetView{p.ID, p.Name, p.Branch, p.Summary, p.Map})
+		presets = append(presets, presetView{p.ID, p.Name, p.Summary, p.Map})
 	}
 	var slots []slotView
 	for _, sl := range recipe.AllSlots {
@@ -508,20 +538,22 @@ func (s *server) handleState(r *http.Request) (any, error) {
 		outputs = append(outputs, outputView{o, recipe.SlotsFor(o), outputDesc[o]})
 	}
 	return map[string]any{
-		"version":   app.Version,
-		"os":        runtime.GOOS,
-		"canPick":   platform.CanPick(),
-		"settings":  st,
-		"cacheDir":  s.cacheDir,
-		"logPath":   s.log.path,
-		"cached":    sarasa.CachedVersions(s.cacheDir),
-		"presets":   presets,
-		"slots":     slots,
-		"outputs":   outputs,
-		"fonts":     files,
-		"job":       jobView,
-		"systemDir": platform.SystemFontsDir(),
-		"sysProxy":  platform.SystemProxy(),
+		"version":    app.Version,
+		"os":         runtime.GOOS,
+		"canPick":    platform.CanPick(),
+		"settings":   st,
+		"cacheDir":   s.cacheDir,
+		"logPath":    s.log.path,
+		"cached":     sarasa.CachedVersions(s.cacheDir),
+		"presets":    presets,
+		"slots":      slots,
+		"outputs":    outputs,
+		"fonts":      files,
+		"job":        jobView,
+		"systemDir":  platform.SystemFontsDir(),
+		"canElevate": platform.CanElevate(),
+		"display":    s.displayView(),
+		"sysProxy":   platform.SystemProxy(),
 	}, nil
 }
 
@@ -543,6 +575,11 @@ func (s *server) handleSettings(r *http.Request) (any, error) {
 	}
 	if !filepath.IsAbs(next.OutRoot) {
 		return nil, badRequest("输出文件夹需要是完整路径")
+	}
+	if m, err := display.ParseMode(next.HintMode); err != nil {
+		return nil, badRequest("%v", err)
+	} else {
+		next.HintMode = string(m)
 	}
 	switch next.ProxyMode {
 	case "auto", "direct", "custom":
@@ -579,6 +616,30 @@ func (s *server) proxyValue(st Settings) string {
 	return ""
 }
 
+// ---- display -----------------------------------------------------------------
+
+type displayView struct {
+	Info           display.Info           `json:"info"`
+	Recommendation display.Recommendation `json:"recommendation"`
+}
+
+func (s *server) displayView() displayView {
+	info := s.detect()
+	return displayView{Info: info, Recommendation: display.Recommend(info)}
+}
+
+// handleDisplay re-detects on demand: monitors and scaling can change while
+// the window is open (docking a laptop, changing the scale).
+func (s *server) handleDisplay(r *http.Request) (any, error) { return s.displayView(), nil }
+
+func (s *server) customDisplayOptions(opt *app.CustomOptions) {
+	info := s.detect()
+	r := display.Recommend(info)
+	opt.DisplayDetected = info.Supported && len(info.Monitors) > 0
+	opt.HintingMatters = r.Hinted
+	opt.DisplayBasis = r.Basis
+}
+
 // ---- presets ---------------------------------------------------------------
 
 func (s *server) handlePreset(r *http.Request) (any, error) {
@@ -595,8 +656,10 @@ func (s *server) handlePreset(r *http.Request) (any, error) {
 	s.mu.Lock()
 	st := s.settings
 	s.mu.Unlock()
+	mode, _ := display.ParseMode(st.HintMode)
+	hinted, hintNote := display.Resolve(mode, s.detect)
 	opt := app.PresetOptions{
-		Preset: p.ID, Hinted: st.Hinted, Version: st.Version,
+		Preset: p.ID, Hinted: hinted, HintNote: hintNote, Version: st.Version,
 		CacheDir: s.cacheDir, TempDir: filepath.Join(s.cacheDir, "tmp"),
 		Proxy: s.proxyValue(st), Mirror: st.Mirror,
 		OutRoot: st.OutRoot, Zip: st.Zip,
@@ -607,7 +670,7 @@ func (s *server) handlePreset(r *http.Request) (any, error) {
 		}
 		opt.Local = st.SarasaLocal
 	}
-	j, err := s.startJob("preset", "生成 "+p.Name+"（原 "+p.Branch+" 分支）", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+	j, err := s.startJob("preset", "生成 "+p.Name, func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		res, err := app.RunPreset(ctx, opt, sink)
 		return res, "", err
 	})
@@ -641,6 +704,13 @@ func (s *server) handlePick(r *http.Request) (any, error) {
 		opt = platform.PickOptions{Title: "选择包含 SarasaUiSC-*.ttf 的文件夹", Folder: true}
 	case "sarasa-zip":
 		opt = platform.PickOptions{Title: "选择 SarasaUi-TTF-*.zip", Filters: []platform.Filter{{Name: "Sarasa UI 压缩包 (*.zip)", Pattern: "*.zip"}}}
+	case "package":
+		opt = platform.PickOptions{Title: "选择字体包文件夹（含 fonts 子文件夹）", Folder: true}
+		s.mu.Lock()
+		if st, err := os.Stat(s.settings.OutRoot); err == nil && st.IsDir() {
+			opt.Initial = s.settings.OutRoot
+		}
+		s.mu.Unlock()
 	case "output":
 		opt = platform.PickOptions{Title: "选择输出文件夹", Folder: true}
 		s.mu.Lock()
@@ -833,7 +903,11 @@ func (s *server) handleCustomPlan(r *http.Request) (any, error) {
 	if len(faces) == 0 {
 		return map[string]any{"empty": true}, nil
 	}
-	return custom.Evaluate(faces, req), nil
+	ev := custom.Evaluate(faces, req)
+	var d app.CustomOptions
+	s.customDisplayOptions(&d)
+	custom.ApplyDisplayContext(&ev, d.DisplayDetected, d.HintingMatters, d.DisplayBasis)
+	return ev, nil
 }
 
 func (s *server) handleCustomBuild(r *http.Request) (any, error) {
@@ -849,8 +923,10 @@ func (s *server) handleCustomBuild(r *http.Request) (any, error) {
 	if _, err := custom.ToRecipe(faces, ev); err != nil {
 		return nil, badRequest("%v", err)
 	}
+	opt := app.CustomOptions{Faces: faces, Request: req, OutRoot: st.OutRoot, Zip: st.Zip}
+	s.customDisplayOptions(&opt)
 	j, err := s.startJob("custom", "生成自定义字体包", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
-		res, err := app.RunCustom(ctx, app.CustomOptions{Faces: faces, Request: req, OutRoot: st.OutRoot, Zip: st.Zip}, sink)
+		res, err := app.RunCustom(ctx, opt, sink)
 		return res, "", err
 	})
 	if err != nil {
@@ -866,8 +942,153 @@ func (s *server) handleSystem(r *http.Request) (any, error) {
 	if dir == "" {
 		return map[string]any{"supported": false}, nil
 	}
-	files := sysfonts.Status(dir)
-	return map[string]any{"supported": true, "dir": dir, "files": files}, nil
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		// Fall back to the read-only file table.
+		return map[string]any{"supported": true, "dir": dir, "files": sysfonts.Status(dir), "error": err.Error()}, nil
+	}
+	rep := sysinstall.GetStatus(sysinstall.System(), paths)
+	return map[string]any{"supported": true, "dir": dir, "files": rep.Files, "report": rep, "canElevate": platform.CanElevate()}, nil
+}
+
+type systemRequest struct {
+	Action   string `json:"action"`   // install, restore, forget, clear-cache, cancel
+	Package  string `json:"package"`  // install: package folder
+	Snapshot string `json:"snapshot"` // restore (optional, default newest), forget (required)
+}
+
+func (req systemRequest) validate() error {
+	switch req.Action {
+	case "install":
+		if strings.TrimSpace(req.Package) == "" {
+			return badRequest("请选择要安装的字体包")
+		}
+		if !filepath.IsAbs(req.Package) {
+			return badRequest("字体包需要是完整路径")
+		}
+	case "forget":
+		if !sysinstall.ValidSnapshotID(req.Snapshot) {
+			return badRequest("请选择要删除的备份")
+		}
+	case "restore", "clear-cache", "cancel":
+	default:
+		return badRequest("unknown action %q", req.Action)
+	}
+	if req.Snapshot != "" && !sysinstall.ValidSnapshotID(req.Snapshot) {
+		return badRequest("备份编号无效")
+	}
+	return nil
+}
+
+// handleSystemPlan is a dry run without privileges; the elevated helper
+// repeats every check itself.
+func (s *server) handleSystemPlan(r *http.Request) (any, error) {
+	var req systemRequest
+	if err := decode(r, &req); err != nil {
+		return nil, err
+	}
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		return sysinstall.Plan{Action: req.Action, Blockers: []string{err.Error()}}, nil
+	}
+	sys := sysinstall.System()
+	switch req.Action {
+	case "install":
+		return sysinstall.PlanInstall(sys, paths, req.Package), nil
+	case "restore":
+		return sysinstall.PlanRestore(sys, paths, req.Snapshot), nil
+	case "clear-cache":
+		return sysinstall.PlanClearCache(sys, paths), nil
+	}
+	return sysinstall.Plan{Action: req.Action, Steps: []string{"移除本工具登记的待重启操作，并恢复改动过的文件权限"}}, nil
+}
+
+func (s *server) handleSystemRun(r *http.Request) (any, error) {
+	var req systemRequest
+	if err := decode(r, &req); err != nil {
+		return nil, err
+	}
+	if err := req.validate(); err != nil {
+		return nil, err
+	}
+	if !platform.CanElevate() {
+		return nil, httpError{http.StatusNotImplemented, sysinstall.ErrUnsupported.Error()}
+	}
+	titles := map[string]string{"install": "安装字体包到系统", "restore": "还原备份", "forget": "删除一份备份", "clear-cache": "清空字体缓存", "cancel": "取消待重启的操作"}
+	j, err := s.startJob("system", titles[req.Action], func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+		return nil, "", s.runElevated(sink, req)
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	j.Action = req.Action
+	s.mu.Unlock()
+	return j.summary(), nil
+}
+
+// runElevated starts this program as `system <action>` through UAC and
+// relays the result it leaves in the protected results folder.
+func (s *server) runElevated(sink progress.Sink, req systemRequest) error {
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		return err
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	id, err := randomToken()
+	if err != nil {
+		return err
+	}
+	id = id[:32]
+	args := []string{"system", req.Action}
+	switch req.Action {
+	case "install":
+		args = append(args, req.Package)
+	case "restore", "forget":
+		if req.Snapshot != "" {
+			args = append(args, req.Snapshot)
+		}
+	}
+	args = append(args, "-result", id)
+	sink.Stage("elevate", "等待管理员授权：请在弹出的窗口里选择「是」")
+	code, err := platform.RunElevated(exe, args)
+	if err != nil {
+		return err
+	}
+	res, rerr := sysinstall.ReadResult(paths, id)
+	if rerr != nil {
+		return fmt.Errorf("管理员进程已退出（代码 %d），但没有留下结果：%v", code, rerr)
+	}
+	for _, line := range res.Log {
+		sink.Infof("%s", line)
+	}
+	if !res.OK {
+		return errors.New(res.Error)
+	}
+	return nil
+}
+
+func (s *server) handleSystemReboot(r *http.Request) (any, error) {
+	if r.Method != http.MethodPost {
+		return nil, httpError{http.StatusMethodNotAllowed, "POST required"}
+	}
+	if err := platform.Reboot(); err != nil {
+		return nil, err
+	}
+	return map[string]bool{"ok": true}, nil
+}
+
+func (s *server) handlePackages(r *http.Request) (any, error) {
+	s.mu.Lock()
+	root := s.settings.OutRoot
+	s.mu.Unlock()
+	return map[string]any{"root": root, "packages": pack.List(root)}, nil
 }
 
 func (s *server) handleSystemBackup(r *http.Request) (any, error) {

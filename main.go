@@ -24,11 +24,13 @@ import (
 
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/app"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/custom"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/display"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/fetch"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/gui"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/platform"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/progress"
 	"github.com/chunxiaoyi/yahei-sarasa-go/internal/recipe"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/sysinstall"
 )
 
 func main() {
@@ -52,6 +54,10 @@ func main() {
 		err = runCustom(ctx, args[1:])
 	case args[0] == "inspect":
 		err = runInspect(args[1:])
+	case args[0] == "display":
+		err = runDisplay(args[1:])
+	case args[0] == "system":
+		err = runSystem(args[1:])
 	case args[0] == "version" || args[0] == "-version" || args[0] == "--version":
 		fmt.Println("yahei-sarasa-go", app.Version)
 	case args[0] == "help" || args[0] == "-h" || args[0] == "--help" || args[0] == "-help":
@@ -77,17 +83,25 @@ func usage() {
 	fmt.Print(`yahei-sarasa-go ` + app.Version + `
 
   (无参数)                     打开图形界面
-  build   [选项]               生成 Sarasa 预设（不写 build 直接给选项也可以，兼容旧用法）
+  build   [选项]               生成 Sarasa 预设（不写 build、直接给选项也可以）
   custom  -font 文件 [选项]    用自己的字体生成
   inspect 文件... [-json]      体检字体文件（也可用来提取 Windows 原版字体信息）
+  display [-json]              检测这台电脑的屏幕缩放，给出 hinted / unhinted 建议
+  system status                查看系统字体、备份和待重启操作
+  system install 字体包文件夹   先备份当前字体，再安装到系统（重启后生效，同时清空字体缓存；需管理员）
+  system restore [备份编号]     还原到某份备份，默认最近一份（重启后生效；需管理员）
+  system forget 备份编号        删除一份备份（需管理员）
+  system clear-cache           只清空字体缓存（重启后生效；需管理员）
+  system cancel                取消还没重启生效的操作（需管理员）
   version
 
 build 选项：
-  -preset semibold|regular     semibold = 原 main 分支（默认），regular = 原 regular 分支
+  -preset semibold|regular     semibold = 正文用 SemiBold（默认），regular = 正文用 Regular
   -source-dir 目录或zip        使用本地 SarasaUiSC-*.ttf，不联网
   -version 1.0.42              固定 Sarasa 版本（默认最新）
-  -hinted=true                 使用 hinted 包
-  -result ./result             输出目录（只放 6 个字体，与旧版完全一致）
+  -hint auto|hinted|unhinted   auto = 按这台电脑的屏幕缩放自动判定（任一屏幕低于 150% 用 hinted）
+  -hinted=true|false           不给 -hint 时使用：true = hinted（默认），false = unhinted
+  -result ./result             输出目录（只放 6 个字体）
   -out 目录                    改为生成完整的包（fonts/ + manifest + 校验 + 说明）
   -zip                         与 -out 一起：额外打成 zip
   -cache 目录                  缓存下载的 Sarasa（"auto" = 用户缓存目录）
@@ -128,7 +142,8 @@ func runBuild(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("build", flag.ExitOnError)
 	opt := app.PresetOptions{}
 	fs.StringVar(&opt.Preset, "preset", "semibold", "semibold (main) or regular")
-	fs.BoolVar(&opt.Hinted, "hinted", true, "use hinted Sarasa UI TTF package")
+	fs.BoolVar(&opt.Hinted, "hinted", true, "use hinted Sarasa UI TTF package (ignored when -hint is given)")
+	hint := fs.String("hint", "", "auto, hinted or unhinted (auto decides from this computer's display scaling)")
 	tempDir := fs.String("temp", "./temp", "temporary directory")
 	fs.StringVar(&opt.ResultDir, "result", "./result", "result directory (exactly the six fonts)")
 	fs.BoolVar(&opt.KeepTemp, "keep-temp", false, "keep extracted Sarasa source TTF files")
@@ -142,6 +157,13 @@ func runBuild(ctx context.Context, args []string) error {
 	_ = fs.Parse(args)
 	if fs.NArg() > 0 {
 		return fmt.Errorf("unexpected arguments: %v", fs.Args())
+	}
+	if *hint != "" {
+		mode, err := display.ParseMode(*hint)
+		if err != nil {
+			return err
+		}
+		opt.Hinted, opt.HintNote = display.Resolve(mode, display.Detect)
 	}
 	opt.CacheDir = cacheRoot(*cache)
 	opt.TempDir = *tempDir
@@ -253,13 +275,21 @@ func runCustom(ctx context.Context, args []string) error {
 	}
 
 	ev := custom.Evaluate(faces, req)
+	if info := display.Detect(); info.Supported && len(info.Monitors) > 0 {
+		rec := display.Recommend(info)
+		custom.ApplyDisplayContext(&ev, true, rec.Hinted, rec.Basis)
+	}
 	printEvaluation(ev)
 	if !ev.CanBuild {
 		_, err := custom.ToRecipe(faces, ev)
 		return err
 	}
 	sink := progress.Console(os.Stdout)
-	_, err = app.RunCustom(ctx, app.CustomOptions{Faces: faces, Request: req, ResultDir: *result, OutRoot: *out, Zip: *zipIt, Name: *name}, sink)
+	copt := app.CustomOptions{Faces: faces, Request: req, ResultDir: *result, OutRoot: *out, Zip: *zipIt, Name: *name}
+	info := display.Detect()
+	rec := display.Recommend(info)
+	copt.DisplayDetected, copt.HintingMatters, copt.DisplayBasis = info.Supported && len(info.Monitors) > 0, rec.Hinted, rec.Basis
+	_, err = app.RunCustom(ctx, copt, sink)
 	return err
 }
 
@@ -302,6 +332,136 @@ func sevLabel(s custom.Severity) string {
 		return "注意"
 	}
 	return "信息"
+}
+
+func runDisplay(args []string) error {
+	fs := flag.NewFlagSet("display", flag.ExitOnError)
+	asJSON := fs.Bool("json", false, "machine-readable output")
+	_ = fs.Parse(args)
+	info := display.Detect()
+	rec := display.Recommend(info)
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(map[string]any{"info": info, "recommendation": rec})
+	}
+	fmt.Println(display.Describe(info))
+	for i, m := range info.Monitors {
+		fmt.Printf("  屏幕 %d  %-14s %5d×%-5d  DPI %3d  缩放 %d%%  主屏 %v\n", i+1, m.Name, m.Width, m.Height, m.DPI, m.Scale, m.Primary)
+	}
+	choice := "unhinted"
+	if rec.Hinted {
+		choice = "hinted"
+	}
+	fmt.Printf("建议：%s\n理由：%s\n", choice, rec.Reason)
+	return nil
+}
+
+func runSystem(args []string) error {
+	if len(args) == 0 {
+		return errors.New("system: 需要子命令：status、install、restore、forget、clear-cache、cancel")
+	}
+	sub := args[0]
+	fs := flag.NewFlagSet("system "+sub, flag.ExitOnError)
+	resultID := fs.String("result", "", "write the outcome to the protected results folder (used by the GUI)")
+	asJSON := fs.Bool("json", false, "machine-readable status")
+	positional := parseInterspersed(fs, args[1:])
+
+	sys := sysinstall.System()
+	paths, err := sysinstall.DefaultPaths()
+	if err != nil {
+		return err
+	}
+	if sub == "status" {
+		r := sysinstall.GetStatus(sys, paths)
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(r)
+		}
+		fmt.Println(r.Message)
+		for _, f := range r.Files {
+			mark := ""
+			switch {
+			case f.Expected != nil && f.MatchesInstalled:
+				mark = "（与安装记录一致）"
+			case f.Expected != nil:
+				mark = "（与安装记录不一致）"
+			case f.BackedUp:
+				mark = "（已备份）"
+			}
+			fmt.Printf("  %-12s %-10s %s%s\n", f.Name, f.State, f.SHA256, mark)
+		}
+		if len(r.Snapshots) == 0 {
+			fmt.Println("备份：还没有")
+		} else {
+			fmt.Printf("备份（%s，共 %.1f MiB）：\n", paths.BackupsDir(), float64(r.BackupBytes)/(1<<20))
+			for _, s := range r.Snapshots {
+				note := ""
+				if len(s.NonOriginal) > 0 {
+					note = "，非原版：" + strings.Join(s.NonOriginal, "、")
+				}
+				fmt.Printf("  %s  %s%s\n", s.ID, s.Label, note)
+			}
+		}
+		if r.PendingActive {
+			fmt.Printf("待重启：%d 个操作\n", r.PendingCount)
+		}
+		return nil
+	}
+
+	var lines []string
+	logf := func(format string, a ...any) {
+		line := fmt.Sprintf(format, a...)
+		lines = append(lines, line)
+		if *resultID == "" {
+			fmt.Println("========>", line)
+		}
+	}
+	var opErr error
+	switch sub {
+	case "install":
+		if len(positional) != 1 {
+			opErr = errors.New("system install: 需要一个字体包文件夹")
+			break
+		}
+		opErr = sysinstall.Install(sys, paths, positional[0], logf)
+	case "restore":
+		id := ""
+		if len(positional) > 0 {
+			id = positional[0]
+		}
+		if id != "" && !sysinstall.ValidSnapshotID(id) {
+			opErr = fmt.Errorf("备份编号无效：%q（用 system status 查看）", id)
+			break
+		}
+		opErr = sysinstall.Restore(sys, paths, id, logf)
+	case "forget":
+		if len(positional) != 1 {
+			opErr = errors.New("system forget: 需要一个备份编号（用 system status 查看）")
+			break
+		}
+		opErr = sysinstall.Forget(sys, paths, positional[0], logf)
+	case "clear-cache":
+		opErr = sysinstall.ClearCache(sys, paths, logf)
+	case "cancel":
+		opErr = sysinstall.Cancel(sys, paths, logf)
+	default:
+		opErr = fmt.Errorf("system: 未知子命令 %q", sub)
+	}
+	if *resultID != "" {
+		r := sysinstall.Result{OK: opErr == nil, Log: lines}
+		if opErr != nil {
+			r.Error = opErr.Error()
+		}
+		if err := sysinstall.WriteResult(sys, paths, *resultID, r); err != nil {
+			return fmt.Errorf("写入结果失败：%w", err)
+		}
+	}
+	if errors.Is(opErr, sysinstall.ErrNotAdmin) {
+		return errors.New("需要管理员权限：请在「以管理员身份运行」的终端里执行，或使用图形界面（会弹出授权提示）")
+	}
+	return opErr
 }
 
 func runInspect(args []string) error {

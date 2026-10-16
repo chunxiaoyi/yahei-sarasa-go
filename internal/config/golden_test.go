@@ -81,3 +81,20 @@ func TestC1FSSelectionMatchesWindows11OriginalFaces(t *testing.T) {
 		}
 	}
 }
+
+func TestProjectCopyright(t *testing.T) {
+	if Copyright != "Made from sarasa by GPT and Claude" || BaselineCopyright != "Made from sarasa by GPT" {
+		t.Fatalf("copyright strings changed: %q / %q", Copyright, BaselineCopyright)
+	}
+	for _, s := range []string{Copyright, BaselineCopyright} {
+		if !IsProjectCopyright(s) {
+			t.Fatalf("%q not recognised", s)
+		}
+	}
+	if IsProjectCopyright("© Microsoft Corporation") || IsProjectCopyright("") {
+		t.Fatal("foreign copyright recognised as ours")
+	}
+	if Regular("1").Copyright != Copyright || SemiBold("1").Copyright != Copyright {
+		t.Fatal("presets must carry the current copyright")
+	}
+}

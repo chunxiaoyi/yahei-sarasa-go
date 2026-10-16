@@ -38,6 +38,7 @@ type Result struct {
 type PresetOptions struct {
 	Preset   string
 	Hinted   bool
+	HintNote string // why hinted/unhinted was chosen (logged and kept in the manifest)
 	Version  string // Sarasa version, "" = latest
 	Local    string // Sarasa folder or ZIP; disables network
 	CacheDir string // "" = no cache
@@ -67,6 +68,9 @@ func RunPreset(ctx context.Context, opt PresetOptions, sink progress.Sink) (*Res
 	if opt.Local == "" && proxyDesc != "" {
 		sink.Infof("网络：%s", proxyDesc)
 	}
+	if opt.Local == "" && opt.HintNote != "" {
+		sink.Infof("Sarasa 包：%s", opt.HintNote)
+	}
 	files := p.Files()
 	src, err := sarasa.Acquire(ctx, sarasa.Options{
 		Local: opt.Local, Version: opt.Version, Hinted: opt.Hinted,
@@ -93,7 +97,10 @@ func RunPreset(ctx context.Context, opt PresetOptions, sink progress.Sink) (*Res
 	if opt.Local != "" {
 		hint = "local"
 	}
-	title := fmt.Sprintf("微软雅黑 ← Sarasa UI SC %s %s（%s 预设，原 %s 分支）", p.Name, src.Version, p.ID, p.Branch)
+	title := fmt.Sprintf("微软雅黑 ← Sarasa UI SC %s %s", src.Version, p.Name)
+	if hint != "local" {
+		title += " " + hint
+	}
 	name := pack.SafeName(fmt.Sprintf("YaHei-Sarasa-%s-%s-%s", map[string]string{"semibold": "SemiBold", "regular": "Regular"}[p.ID], src.Version, hint))
 
 	res := &Result{Kind: "preset", Title: title}
@@ -116,8 +123,8 @@ func RunPreset(ctx context.Context, opt PresetOptions, sink progress.Sink) (*Res
 	if pkgDir != "" {
 		sink.Stage("pack", "正在打包")
 		m := pack.Manifest{
-			Kind: "preset", Preset: p.ID, Branch: p.Branch, Title: title,
-			Sarasa: map[string]any{"version": src.Version, "package": src.Package, "origin": src.Origin, "hinted": opt.Hinted, "files": src.Files},
+			Kind: "preset", Preset: p.ID, Title: title,
+			Sarasa: map[string]any{"version": src.Version, "package": src.Package, "origin": src.Origin, "hinted": opt.Hinted, "hintChoice": opt.HintNote, "files": src.Files},
 			Slots:  slotLabels(slots), Sources: sourceInfos(plan), Outputs: outs,
 		}
 		zipPath, err := pack.Finish(pkgDir, m, opt.Zip)
@@ -139,12 +146,18 @@ type CustomOptions struct {
 	OutRoot   string
 	Zip       bool
 	Name      string // optional package name
+
+	// Display context for the "no hinting" finding (see custom.ApplyDisplayContext).
+	DisplayDetected bool
+	HintingMatters  bool
+	DisplayBasis    string
 }
 
 // RunCustom builds from user fonts after re-evaluating the plan.
 func RunCustom(ctx context.Context, opt CustomOptions, sink progress.Sink) (*Result, error) {
 	start := time.Now()
 	ev := custom.Evaluate(opt.Faces, opt.Request)
+	custom.ApplyDisplayContext(&ev, opt.DisplayDetected, opt.HintingMatters, opt.DisplayBasis)
 	plan, err := custom.ToRecipe(opt.Faces, ev)
 	if err != nil {
 		return nil, err

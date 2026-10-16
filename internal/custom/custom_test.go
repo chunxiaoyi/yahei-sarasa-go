@@ -232,6 +232,9 @@ func TestCustomBuildEndToEnd(t *testing.T) {
 	if otfont.BestName(recs, 13) != "Fixture license" || otfont.BestName(recs, 14) == "" {
 		t.Fatal("license records not carried over")
 	}
+	if !strings.HasPrefix(otfont.BestName(recs, 10), config.CustomMarkerPrefix) {
+		t.Fatalf("custom marker missing: %q", otfont.BestName(recs, 10))
+	}
 	if otfont.BestName(recs, 5) != "2.500" {
 		t.Fatalf("version %q", otfont.BestName(recs, 5))
 	}
@@ -274,7 +277,7 @@ func TestCustomBuildEndToEnd(t *testing.T) {
 
 func specWithExtras(spec config.FontSpec, recs []otfont.NameRecord) config.FontSpec {
 	spec.Copyright = otfont.BestName(recs, 0)
-	for _, id := range []uint16{13, 14} {
+	for _, id := range []uint16{10, 13, 14} {
 		if v := otfont.BestName(recs, id); v != "" {
 			spec.ExtraNames = append(spec.ExtraNames, config.NameRecord{PlatformID: 3, EncodingID: 1, LanguageID: 0x0409, NameID: id, Value: v})
 		}

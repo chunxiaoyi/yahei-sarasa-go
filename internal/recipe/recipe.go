@@ -1,11 +1,9 @@
 // Package recipe describes how Windows 11 font identities are filled with
 // glyph sources, and builds the six replacement files from that description.
 //
-// The two validated Sarasa variants (formerly the "main" and "regular" git
-// branches) are expressed as presets over the same build path. That build path
-// performs exactly the operations the D4 / D4-Regular programs performed, in
-// the same order, so preset output is byte-for-byte identical to them; the
-// regression tests in this package pin that.
+// The two validated Sarasa variants (D4 and D4-Regular in GOLDEN.md) are
+// presets over one build path. Their output is pinned byte for byte by the
+// regression tests in this package.
 package recipe
 
 import (
@@ -63,7 +61,7 @@ func (s Slot) Valid() bool {
 	return false
 }
 
-// Output file names, in the order the original program generated them.
+// Output file names, in generation order.
 const (
 	OutSegoeUI = "segoeui.ttf"
 	OutMSYH    = "msyh.ttc"
@@ -99,6 +97,37 @@ var outputDefs = []outputDef{
 	{name: OutMSYHL, collection: true, faces: []faceDef{{SlotLight, config.Light}, {SlotLight, config.LightUI}}},
 	{name: OutSimSun, collection: true, faces: []faceDef{{SlotSimSun, config.SimSun}, {SlotSimSun, config.NSimSun}}},
 	{name: OutSimSunB, faces: []faceDef{{SlotSimSun, config.SimSunExtB}}},
+}
+
+// FaceIdentity is what Windows must find in one face of an output file.
+type FaceIdentity struct {
+	Family string `json:"family"` // Windows en-US name ID 1
+	Weight uint16 `json:"weight"`
+}
+
+// ExpectedFaces lists, in order, the faces an output file must contain.
+// The installer uses it to refuse a file that would not stand in correctly
+// for the system font of that name.
+func ExpectedFaces(output string) []FaceIdentity {
+	for _, d := range outputDefs {
+		if d.name != output {
+			continue
+		}
+		out := make([]FaceIdentity, 0, len(d.faces))
+		for _, fd := range d.faces {
+			spec := fd.spec("")
+			id := FaceIdentity{Weight: spec.Weight}
+			for _, r := range spec.Identity {
+				if r.PlatformID == 3 && r.LanguageID == 0x0409 && r.NameID == 1 {
+					id.Family = r.Value
+					break
+				}
+			}
+			out = append(out, id)
+		}
+		return out
+	}
+	return nil
 }
 
 // SlotsFor returns the slots an output file draws from.
@@ -344,8 +373,7 @@ func describeFace(index int, slot Slot, spec config.FontSpec, src *Source) FaceI
 }
 
 // VerifyDir checks that dir contains exactly the named files and nothing
-// else (the original program's "exactly 6 files" contract, generalised to
-// custom output subsets).
+// else (all six for presets, a chosen subset for custom fonts).
 func VerifyDir(dir string, names []string) error {
 	want := map[string]bool{}
 	for _, n := range names {

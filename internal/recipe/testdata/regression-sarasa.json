@@ -1,5 +1,5 @@
 {
-  "_comment": "Byte-for-byte outputs of the original D4 (main @ b9aa06c) and D4-Regular (regular @ ee9e874) programs, generated with -source-dir from the listed Sarasa UI SC sources. internal/recipe regression tests compare both presets against these.",
+  "_comment": "Byte-for-byte outputs of the original D4 (main @ b9aa06c) and D4-Regular (regular @ ee9e874) programs, generated with -source-dir from the listed Sarasa UI SC sources. internal/recipe regression tests rebuild both presets with config.LegacyCopyright and compare against these, then check that the current copyright string is the only difference.",
   "cases": [
     {
       "sarasa": "1.0.42",

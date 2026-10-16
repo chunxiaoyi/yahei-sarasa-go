@@ -1,17 +1,22 @@
 # yahei-sarasa-go — v2.0
 
-> **两个分支合并成一个程序的两个预设，并加上图形界面与自定义字体。** 原 main（D4）与原 regular（D4-Regular）的处理逻辑原样保留，生成文件逐字节一致。D4 的完整实验记录保留在下方。
+> **两个 Sarasa 预设（SemiBold 版 = D4，标准版 = D4-Regular）、图形界面、自定义字体，以及安装到系统与还原。** 预设规则的实验记录见下方 D4 一节。
 
 ## 变化
 
-- **图形界面**：双击 `YaHeiSarasa.exe`。两个预设按钮（SemiBold 版 = 原 main，标准版 = 原 regular），一键下载、生成、校验、打包。界面是程序内置的本地网页，用系统自带的 Edge 以应用窗口显示，文件选择用 Windows 原生对话框。
+- **图形界面**：双击 `YaHeiSarasa.exe`。两个预设按钮（SemiBold 版、标准版），一键下载、生成、校验、打包。界面是程序内置的本地网页，用系统自带的 Edge 以应用窗口显示，文件选择用 Windows 原生对话框。
 - **自定义字体**：TTF / OTF / TTC / OTC / WOFF；按两个预设的规则自动分配字重，可手动调整；生成前体检并解释每个风险，阻止会让中文界面缺字的组合；对常见问题自动修正（只作用于自定义字体）。
 - **打包**：`fonts/` + `manifest.json` + `SHA256SUMS.txt` + `安装说明.txt`，可选 zip。
 - **系统字体页**：查看 6 个目标文件是 Win11 原版（与金标准哈希一致）、本工具生成还是其他替换，一键备份并校验。
 - **下载**：Sarasa 缓存（第二个预设不再联网）；GitHub API 限流时改走网页地址；Range 请求失败自动重试；解压先写临时文件再改名；支持系统代理、指定代理和镜像前缀；也可以直接用本地 SarasaUi-TTF-*.zip。
-- **命令行**：旧用法不变（`-preset` 默认 semibold）；新增 `build -out/-zip/-cache`、`custom`、`inspect`。
-- **验证**：两个原分支的输出哈希写入回归测试；`tools/validate_fonts.py` 用 fontTools 独立复核。
-- Go 模块路径改为 `github.com/chunxiaoyi/yahei-sarasa-go`（与仓库名一致）。
+- **命令行**：`build`（`-preset semibold|regular`，默认 semibold；`-out/-zip/-cache`）、`custom`、`inspect`。
+- **验证**：两个预设的基准输出哈希写入回归测试，逐字节比对；`tools/validate_fonts.py` 用 fontTools 独立复核。
+- 版权字段（name ID 0）为 `Made from sarasa by GPT and Claude`，不参与 Windows 字体匹配；系统字体页把它和 `Made from sarasa by GPT` 都识别为本工具生成。
+- 安装与还原：在「系统字体」页把字体包安装到系统、还原到任意一份备份、只清空字体缓存，都在下次重启时生效（MoveFileEx + PendingFileRenameOperations），换完字体后同一次重启里清空 `FontCache` 文件夹和 `FNTCACHE.DAT`。每次替换前把当前 6 个文件照原样备份（不论是否原版；非原版会提醒，但照样备份，因为它们往往比原版更难再找到），按哈希去重、按快照保存，只在用户要求时删除。安装前后两次校验哈希与字体身份；新文件沿用原文件的所有者和权限；数据文件夹受保护、拒绝被他人预先创建；重启前可取消，失败会完整回滚。界面只在执行时经 UAC 启动隐藏的管理员进程。命令行新增 `system status|install|restore|forget|clear-cache|cancel`。
+- 自定义字体包加入 name ID 10 标记，系统字体页不会把装过的「微软字体改的自定义包」误认成原版；识别原版时也会看商标、厂商记录和 OS/2 厂商 ID。
+- hinted / unhinted 默认按屏幕自动判定：任一屏幕缩放低于 150% 或关闭字体平滑时用 hinted，全部 150% 及以上用 unhinted，检测不到时用 hinted；理由显示在界面上，可手动改。命令行新增 `-hint auto|hinted|unhinted` 与 `display` 子命令。自定义字体缺少 hinting 时，按同样的判断决定是提示还是警告。
+- Windows 构建：`build.cmd`（免执行策略）/ `build.ps1`（兼容 Windows PowerShell 5.1，检查 Go 版本与每一步退出码，可选 `-Test`、`-Arch arm64`）。
+- 修正：图形界面退出时关闭 gui.log（Windows 上被占用的文件无法删除或覆盖）。
 
 ---
 

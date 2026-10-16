@@ -19,7 +19,7 @@ const (
 	// "regular" preset).
 	StyleRegular Style = "regular"
 	// StyleSemiBold: the face nearest 600 becomes YaHei/Segoe Regular 400
-	// (like the "semibold" preset, formerly main).
+	// (like the "semibold" preset).
 	StyleSemiBold Style = "semibold"
 )
 
@@ -327,6 +327,29 @@ func FaceIssues(faces []*Face, ev Evaluation) []FaceIssueGroup {
 	return out
 }
 
+// ApplyDisplayContext rewrites the "no hinting" finding for the computer the
+// tool runs on: a warning when hinting matters there (a monitor below 150 %
+// scaling), a reassurance when it does not. Without detection it does nothing.
+func ApplyDisplayContext(ev *Evaluation, detected, hintingMatters bool, basis string) {
+	if !detected {
+		return
+	}
+	for gi := range ev.Faces {
+		for ii, is := range ev.Faces[gi].Issues {
+			if is.Code != "unhinted" {
+				continue
+			}
+			if hintingMatters {
+				ev.Faces[gi].Issues[ii] = issue(SevWarn, "unhinted",
+					"没有 TrueType hinting，而这台电脑的屏幕需要它（%s）：传统程序里的小字号会偏虚。字体如果有 hinted 版本，建议换用", basis)
+			} else {
+				ev.Faces[gi].Issues[ii] = issue(SevInfo, "unhinted",
+					"没有 TrueType hinting；这台电脑的屏幕缩放较高（%s），影响很小", basis)
+			}
+		}
+	}
+}
+
 // FaceIssueGroup is one face's findings.
 type FaceIssueGroup struct {
 	FaceID string       `json:"faceId"`
@@ -396,7 +419,14 @@ func (f *Face) Source() *recipe.Source {
 		}
 		copyright = "Made from " + name + " by yahei-sarasa-go"
 	}
-	var extra []config.NameRecord
+	// Name ID 10 marks the file as made by this tool, so the system-font
+	// page never mistakes an installed custom build of a Microsoft font
+	// (which keeps Microsoft's copyright) for a Windows original.
+	srcName := strings.TrimSpace(f.Facts.FullName)
+	if srcName == "" {
+		srcName = f.FileName
+	}
+	extra := []config.NameRecord{{PlatformID: 3, EncodingID: 1, LanguageID: 0x0409, NameID: 10, Value: config.CustomMarkerPrefix + srcName}}
 	if v := strings.TrimSpace(f.Facts.License); v != "" {
 		extra = append(extra, config.NameRecord{PlatformID: 3, EncodingID: 1, LanguageID: 0x0409, NameID: 13, Value: v})
 	}
