@@ -112,7 +112,10 @@ func newServer(opt Options) (*server, error) {
 
 func (s *server) logf(format string, args ...any) { s.log.printf(format, args...) }
 
-func (s *server) cleanup() { _ = os.RemoveAll(s.uploadDir) }
+func (s *server) cleanup() {
+	s.log.close()
+	_ = os.RemoveAll(s.uploadDir)
+}
 
 func defaultCacheDir() string {
 	if d, err := os.UserCacheDir(); err == nil {

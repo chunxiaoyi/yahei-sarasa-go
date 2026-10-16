@@ -17,7 +17,7 @@
 
 ### 两个预设
 
-两个按钮就是原来的两个分支，逻辑原样保留，生成的文件与原分支**逐字节一致**（见下文“验证”）：
+两个按钮就是原来的两个分支，逻辑原样保留。唯一的改动是版权字段（name ID 0）从 `Made from sarasa by GPT` 改为 `Made from sarasa by GPT and Claude`，它不参与 Windows 的字体匹配；换回旧字符串时，生成的文件与原分支**逐字节一致**（见下文“验证”）：
 
 | Windows 看到的字体 | SemiBold 版（原 main） | 标准版（原 regular） |
 | --- | --- | --- |
@@ -72,26 +72,55 @@ yahei-sarasa-cli inspect C:\Windows\Fonts\msyh.ttc -json
 
 ## 构建
 
-只用 Go 标准库（Go 1.22+），无 Python / FontForge / 7z 运行时依赖。
+只用 Go 标准库，需要 Go 1.22 或更新版本；不需要 CGO、gcc、Python。
 
-```powershell
-.\build.ps1          # Windows：生成 dist\YaHeiSarasa.exe（窗口程序）与 dist\yahei-sarasa-cli.exe
+### Windows
+
+装 Go（装完重新打开终端）：
+
+```bat
+winget install GoLang.Go
 ```
 
+在源码目录里（cmd 和 PowerShell 都可以）：
+
+```bat
+build.cmd                 :: 生成 dist\YaHeiSarasa.exe（窗口程序）和 dist\yahei-sarasa-cli.exe（命令行）
+build.cmd -Test           :: 先跑 go vet 和 go test，通过后再编译
+build.cmd -Arch arm64     :: Windows on ARM，生成 *-arm64.exe
+```
+
+`build.cmd` 只是以 `-ExecutionPolicy Bypass` 调用 `build.ps1`，免得被 Windows 默认的脚本执行策略拦下；也可以直接 `powershell -ExecutionPolicy Bypass -File .\build.ps1 -Test`。从源码压缩包解压、没有 `.git` 或没装 git 都没关系，版本号会记成 `dev`。
+
+不想用脚本时，PowerShell 里直接：
+
+```powershell
+$env:CGO_ENABLED = "0"
+go build -trimpath -ldflags "-s -w -H=windowsgui" -o dist\YaHeiSarasa.exe .
+go build -trimpath -ldflags "-s -w" -o dist\yahei-sarasa-cli.exe .
+```
+
+cmd 里把第一行换成 `set CGO_ENABLED=0`。`-H=windowsgui` 让窗口程序启动时不带黑色控制台；命令行版不加这个参数。
+
+### Linux / macOS
+
 ```sh
-./build.sh           # 任意系统交叉编译 Windows amd64/arm64
+go build -o yahei-sarasa .   # 本机版本：命令行可用，图形界面会用 Chromium/Chrome 或默认浏览器打开
+./build.sh                   # 交叉编译 Windows amd64/arm64 到 dist/
 ```
 
 ## 验证
 
 ```sh
-go test ./...
 go vet ./...
+go test ./...
 YSG_SARASA_DIR=/path/to/sarasa go test ./internal/recipe -run RealSarasa -v
 python tools/validate_fonts.py output/<包名>      # 可选：用 fontTools 独立复核
 ```
 
-- `internal/recipe/testdata/regression-sarasa.json` 记录了原 main（b9aa06c）与原 regular（ee9e874）程序对 Sarasa 1.0.42 hinted/unhinted 及一组合成字体的输出哈希。两个预设必须逐字节复现；合成字体那组每次 `go test` 都会跑。
+Windows PowerShell 里设置环境变量的写法：`$env:YSG_SARASA_DIR = "D:\Sarasa"; go test ./internal/recipe -run RealSarasa -v`。目录里放 Sarasa 1.0.42 的四个 `SarasaUiSC-*.ttf`（或分别放 hinted/unhinted 的子文件夹）；哈希对不上的版本会自动跳过。
+
+- `internal/recipe/testdata/regression-sarasa.json` 记录了原 main（b9aa06c）与原 regular（ee9e874）程序对 Sarasa 1.0.42 hinted/unhinted 及一组合成字体的输出哈希。测试分两层：用旧版权字符串生成时，两个预设必须与这些哈希逐字节一致；正常生成时，每个文件的每个 face 只允许 name ID 0 这一条记录不同，其余所有表逐字节相同。合成字体那组每次 `go test` 都会跑。
 - `tools/validate_fonts.py` 用 fontTools 重新读一遍生成的文件，逐个 face 对照金标准记录、字重、fsSelection、ClearType 位与 Segoe 白名单。
 
 ## 安全

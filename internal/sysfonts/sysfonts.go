@@ -78,7 +78,7 @@ func status(dir, name string) FileStatus {
 	switch {
 	case config.Windows11OriginalSHA256[name] == fs.SHA256:
 		fs.State = StateOriginal
-	case facts.Copyright == config.Copyright:
+	case config.IsProjectCopyright(facts.Copyright):
 		fs.State = StateOurs
 	case strings.Contains(facts.Copyright, "Microsoft"):
 		fs.State = StateMicrosoft

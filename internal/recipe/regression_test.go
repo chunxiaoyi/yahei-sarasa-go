@@ -1,14 +1,19 @@
 package recipe
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/config"
+	"github.com/chunxiaoyi/yahei-sarasa-go/internal/otfont"
 )
 
 type regressionCase struct {
@@ -56,6 +61,12 @@ func hashDir(t *testing.T, dir string) map[string]string {
 	return out
 }
 
+// runRegression proves two things for one preset and source set:
+//
+//  1. Built with the v1 copyright string, all six outputs are byte-for-byte
+//     what the original branch program wrote (the fixture hashes).
+//  2. Built normally, each output differs from (1) only in the name ID 0
+//     record; every other table of every face is byte-identical.
 func runRegression(t *testing.T, srcDir string, c regressionCase) {
 	t.Helper()
 	p, err := PresetByID(c.Preset)
@@ -69,14 +80,21 @@ func runRegression(t *testing.T, srcDir string, c regressionCase) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := t.TempDir()
-	if _, err := Build(Plan{Slots: slots}, out, nil); err != nil {
+	setCopyright := func(v string) {
+		for _, src := range slots {
+			src.Copyright = v
+		}
+	}
+
+	legacy := t.TempDir()
+	setCopyright(config.LegacyCopyright)
+	if _, err := Build(Plan{Slots: slots}, legacy, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := VerifyDir(out, AllOutputs); err != nil {
+	if err := VerifyDir(legacy, AllOutputs); err != nil {
 		t.Fatal(err)
 	}
-	got := hashDir(t, out)
+	got := hashDir(t, legacy)
 	if !reflect.DeepEqual(got, c.Outputs) {
 		for name, want := range c.Outputs {
 			if got[name] != want {
@@ -85,11 +103,96 @@ func runRegression(t *testing.T, srcDir string, c regressionCase) {
 		}
 		t.FailNow()
 	}
+
+	current := t.TempDir()
+	setCopyright("") // presets' own default: config.Copyright
+	if _, err := Build(Plan{Slots: slots}, current, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range AllOutputs {
+		assertOnlyCopyrightDiffers(t, filepath.Join(legacy, name), filepath.Join(current, name))
+	}
+}
+
+func assertOnlyCopyrightDiffers(t *testing.T, legacyPath, currentPath string) {
+	t.Helper()
+	read := func(p string) []*otfont.Font {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		faces, _, err := otfont.ParseFaces(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return faces
+	}
+	name := filepath.Base(currentPath)
+	a, b := read(legacyPath), read(currentPath)
+	if len(a) != len(b) {
+		t.Fatalf("%s: face count %d vs %d", name, len(a), len(b))
+	}
+	for i := range a {
+		if a[i].ScalerType != b[i].ScalerType || len(a[i].Tables) != len(b[i].Tables) {
+			t.Fatalf("%s face %d: table directory changed", name, i)
+		}
+		for tag, at := range a[i].Tables {
+			bt, ok := b[i].Tables[tag]
+			if !ok {
+				t.Fatalf("%s face %d: table %q missing", name, i, tag)
+			}
+			switch tag {
+			case "name":
+				compareNamesExceptCopyright(t, fmt.Sprintf("%s face %d", name, i), at, bt)
+			case "head":
+				// checkSumAdjustment (bytes 8..12) covers the whole file, so it
+				// necessarily changes with the name table; nothing else may.
+				if len(at) != len(bt) || !bytes.Equal(at[:8], bt[:8]) || !bytes.Equal(at[12:], bt[12:]) {
+					t.Fatalf("%s face %d: head changed beyond checkSumAdjustment", name, i)
+				}
+			default:
+				if !bytes.Equal(at, bt) {
+					t.Fatalf("%s face %d: table %q changed", name, i, tag)
+				}
+			}
+		}
+	}
+}
+
+func compareNamesExceptCopyright(t *testing.T, where string, legacyTable, currentTable []byte) {
+	t.Helper()
+	la, err := otfont.ParseNameRecords(legacyTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lb, err := otfont.ParseNameRecords(currentTable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(la) != len(lb) {
+		t.Fatalf("%s: name record count %d vs %d", where, len(la), len(lb))
+	}
+	for i := range la {
+		ra, rb := la[i], lb[i]
+		if ra.PlatformID != rb.PlatformID || ra.EncodingID != rb.EncodingID || ra.LanguageID != rb.LanguageID || ra.NameID != rb.NameID {
+			t.Fatalf("%s: name record %d key changed", where, i)
+		}
+		if ra.NameID == 0 && ra.PlatformID == 3 && ra.LanguageID == 0x0409 {
+			if ra.Value != config.LegacyCopyright || rb.Value != config.Copyright {
+				t.Fatalf("%s: copyright %q -> %q", where, ra.Value, rb.Value)
+			}
+			continue
+		}
+		if ra.Value != rb.Value {
+			t.Fatalf("%s: name id %d changed: %q -> %q", where, ra.NameID, ra.Value, rb.Value)
+		}
+	}
 }
 
 // TestPresetsMatchOriginalBranchesSynthetic always runs: the synthetic
 // Sarasa-shaped fonts in testdata/synthetic were fed to the original main and
-// regular programs, and both presets must reproduce those files exactly.
+// regular programs, and both presets must reproduce those files exactly
+// (with the v1 copyright string) and differ only in name ID 0 otherwise.
 func TestPresetsMatchOriginalBranchesSynthetic(t *testing.T) {
 	n := 0
 	for _, c := range loadRegression(t) {

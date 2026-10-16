@@ -1,6 +1,6 @@
 # yahei-sarasa-go — v2.0
 
-> **两个分支合并成一个程序的两个预设，并加上图形界面与自定义字体。** 原 main（D4）与原 regular（D4-Regular）的处理逻辑原样保留，生成文件逐字节一致。D4 的完整实验记录保留在下方。
+> **两个分支合并成一个程序的两个预设，并加上图形界面与自定义字体。** 原 main（D4）与原 regular（D4-Regular）的处理逻辑原样保留；唯一改动是版权字段改为 `Made from sarasa by GPT and Claude`，换回旧字符串时生成文件逐字节一致。D4 的完整实验记录保留在下方。
 
 ## 变化
 
@@ -11,6 +11,9 @@
 - **下载**：Sarasa 缓存（第二个预设不再联网）；GitHub API 限流时改走网页地址；Range 请求失败自动重试；解压先写临时文件再改名；支持系统代理、指定代理和镜像前缀；也可以直接用本地 SarasaUi-TTF-*.zip。
 - **命令行**：旧用法不变（`-preset` 默认 semibold）；新增 `build -out/-zip/-cache`、`custom`、`inspect`。
 - **验证**：两个原分支的输出哈希写入回归测试；`tools/validate_fonts.py` 用 fontTools 独立复核。
+- 版权字段（name ID 0）改为 `Made from sarasa by GPT and Claude`。它不参与 Windows 字体匹配；系统字体页仍把旧字符串识别为本工具生成。
+- Windows 构建：`build.cmd`（免执行策略）/ `build.ps1`（兼容 Windows PowerShell 5.1，检查 Go 版本与每一步退出码，可选 `-Test`、`-Arch arm64`）。
+- 修正：图形界面退出时关闭 gui.log（Windows 上被占用的文件无法删除或覆盖）。
 - Go 模块路径改为 `github.com/chunxiaoyi/yahei-sarasa-go`（与仓库名一致）。
 
 ---

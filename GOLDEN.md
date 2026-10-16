@@ -21,7 +21,7 @@ From it D4 snapshots two things only:
 
 The Microsoft font bytes are not embedded or distributed.
 
-Name IDs 0 and 5 remain project-controlled: copyright is `Made from sarasa by GPT`, and version comes from the Sarasa source.
+Name IDs 0 and 5 remain project-controlled: copyright is `Made from sarasa by GPT and Claude` (v1 wrote `Made from sarasa by GPT`), and version comes from the Sarasa source. Name ID 0 is not used by Windows font matching.
 
 ## C1 fsSelection carried through D2/D4
 
@@ -70,12 +70,15 @@ The Segoe UI Windows 11 identity and D4 cmap whitelist strategy remain unchanged
 
 ## v2: one code base, two presets
 
-Since v2 the two branches are two presets over one build path (`internal/recipe`). Every golden value above is applied by the same functions as before, in the same order, so preset output is byte-for-byte identical to the original programs:
+Since v2 the two branches are two presets over one build path (`internal/recipe`). Every golden value above is applied by the same functions as before, in the same order. The only intended difference from the original programs is the name ID 0 string (`... by GPT and Claude`); with the v1 string the output is byte-for-byte identical:
 
 - `semibold` preset = D4 (`main` @ b9aa06c)
 - `regular` preset = D4-Regular (`regular` @ ee9e874)
 
-`internal/recipe/testdata/regression-sarasa.json` pins the SHA-256 of all six outputs of both original programs for Sarasa 1.0.42 (hinted and unhinted) and for a synthetic fixture; the tests rebuild and compare.
+`internal/recipe/testdata/regression-sarasa.json` pins the SHA-256 of all six outputs of both original programs for Sarasa 1.0.42 (hinted and unhinted) and for a synthetic fixture. The tests check two things:
+
+1. Built with the v1 copyright string, every output matches the original program byte for byte.
+2. Built normally, every face differs from (1) only in the name ID 0 record; all other tables are byte-identical.
 
 The hashes of the Windows 11 originals listed at the top are also embedded (`config.Windows11OriginalSHA256`) so the GUI can tell an original system file from a replaced one.
 
@@ -83,6 +86,6 @@ The hashes of the Windows 11 originals listed at the top are also embedded (`con
 
 Custom builds use exactly the same identity records, weights, fsSelection values, face order and Segoe UI whitelist. They differ only where the golden source does not speak:
 
-- Name ID 0 keeps the source font's own copyright notice (instead of `Made from sarasa by GPT`), and the source's license description / URL (IDs 13/14) are carried over. Name ID 5 follows the same version rule as the presets.
+- Name ID 0 keeps the source font's own copyright notice (instead of `Made from sarasa by GPT and Claude`), and the source's license description / URL (IDs 13/14) are carried over. Name ID 5 follows the same version rule as the presets.
 - `head.macStyle` is set to agree with the golden fsSelection (bold bit only on the 700 faces).
 - Source fonts are normalised first (variation tables / STAT / DSIG removed, Windows cmap records added when missing, OS/2 v2-3 raised to v4, coverage-backed code page bits). None of this is ever applied to the Sarasa presets.

@@ -175,6 +175,7 @@ func randomToken() (string, error) {
 type guiLogger struct {
 	mu   sync.Mutex
 	l    *log.Logger
+	f    *os.File
 	path string
 }
 
@@ -183,6 +184,7 @@ func newLogger(dir string) *guiLogger {
 	if err := os.MkdirAll(dir, 0o755); err == nil {
 		g.path = filepath.Join(dir, "gui.log")
 		if f, err := os.Create(g.path); err == nil {
+			g.f = f
 			g.l = log.New(io.MultiWriter(f, os.Stderr), "", log.LstdFlags)
 			return g
 		}
@@ -195,6 +197,18 @@ func (g *guiLogger) printf(format string, args ...any) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.l.Printf(format, args...)
+}
+
+// close releases gui.log. Windows cannot delete or replace a file that is
+// still open, so the handle must not outlive the server.
+func (g *guiLogger) close() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.f != nil {
+		_ = g.f.Close()
+		g.f = nil
+		g.l = log.New(os.Stderr, "", log.LstdFlags)
+	}
 }
 
 func staticFS() fs.FS {

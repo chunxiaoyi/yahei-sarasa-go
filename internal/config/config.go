@@ -7,10 +7,21 @@ import (
 )
 
 // Copyright is the project-controlled name ID 0 used by both Sarasa presets.
-// The original Python project explicitly overwrites the font copyright, and
-// both validated branches (main / regular) keep that behaviour byte-for-byte.
+// The original Python project explicitly overwrites the font copyright.
 // Custom-font builds override it per source (see FontSpec.Copyright).
-const Copyright = "Made from sarasa by GPT"
+//
+// Name ID 0 plays no part in Windows font matching; changing it only changes
+// what font viewers show as the copyright notice.
+const Copyright = "Made from sarasa by GPT and Claude"
+
+// LegacyCopyright is the name ID 0 written by v1 (the original main and
+// regular branches). The regression tests rebuild with it to prove that the
+// presets are otherwise byte-for-byte identical to those branches, and the
+// system-font page still recognises files made by v1.
+const LegacyCopyright = "Made from sarasa by GPT"
+
+// IsProjectCopyright reports whether s is a name ID 0 this project writes.
+func IsProjectCopyright(s string) bool { return s == Copyright || s == LegacyCopyright }
 
 // NameRecord is one raw OpenType name-table identity record extracted from the
 // official Windows 11 fonts supplied as the project's compatibility goldens.
