@@ -69,6 +69,8 @@ output/
   YaHei-Sarasa-Regular-1.0.42-hinted.zip
 ```
 
+`output` 默认在程序所在的文件夹里，程序挪到哪里就跟到哪里；那里写不进去时（例如放在 `Program Files` 下）改用 `文档\yahei-sarasa-go`。在设置里选了别的文件夹就一直用它，清空即恢复默认。
+
 安装见下一节；也可以手动把 `fonts` 中的文件覆盖到 `C:\Windows\Fonts` 的同名文件（系统字体受保护且一直被占用，手动方式通常要在 WinPE/恢复环境里复制）。
 
 ### 安装与还原

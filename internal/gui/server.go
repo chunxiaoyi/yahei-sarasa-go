@@ -32,7 +32,7 @@ import (
 
 // Settings persist between runs in <cache>/settings.json.
 type Settings struct {
-	OutRoot     string `json:"outRoot"`
+	OutRoot     string `json:"outRoot"`  // "" = "output" next to the program, wherever it is now
 	HintMode    string `json:"hintMode"` // auto | hinted | unhinted
 	Zip         bool   `json:"zip"`
 	Version     string `json:"version"`     // "" = latest
@@ -79,6 +79,10 @@ type server struct {
 	files    map[string]*custom.File
 	order    []string
 
+	// outOverride is the -out folder given on the command line; it applies
+	// to this run only and is never saved.
+	outOverride string
+
 	// detect reports the screens; tests replace it.
 	detect func() display.Info
 
@@ -112,7 +116,11 @@ func newServer(opt Options) (*server, error) {
 	}
 	s.settings = s.loadSettings()
 	if opt.OutRoot != "" {
-		s.settings.OutRoot = opt.OutRoot
+		abs, err := filepath.Abs(opt.OutRoot)
+		if err != nil {
+			return nil, err
+		}
+		s.outOverride = abs
 	}
 	fetch.SystemProxy = platform.SystemProxy
 	return s, nil
@@ -148,6 +156,42 @@ func defaultOutRoot() string {
 	return filepath.Join(home, "Documents", "yahei-sarasa-go")
 }
 
+// samePath compares two absolute paths the way the file system does.
+func samePath(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	a, b = filepath.Clean(a), filepath.Clean(b)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(a, b)
+	}
+	return a == b
+}
+
+// outRoot is where packages go: the -out folder of this run, else the folder
+// chosen in the settings, else "output" next to the program.
+func (s *server) outRoot(st Settings) string {
+	if s.outOverride != "" {
+		return s.outOverride
+	}
+	if st.OutRoot != "" {
+		return st.OutRoot
+	}
+	return defaultOutRoot()
+}
+
+// settingsView is what the UI gets: the stored settings plus the folder the
+// output actually goes to and the folder an empty field stands for.
+type settingsView struct {
+	Settings
+	OutRootActual  string `json:"outRootActual"`
+	OutRootDefault string `json:"outRootDefault"`
+}
+
+func (s *server) view(st Settings) settingsView {
+	return settingsView{Settings: st, OutRootActual: s.outRoot(st), OutRootDefault: defaultOutRoot()}
+}
+
 func writable(dir string) bool {
 	f, err := os.CreateTemp(dir, ".write-test-*")
 	if err != nil {
@@ -162,7 +206,7 @@ func writable(dir string) bool {
 func (s *server) settingsPath() string { return filepath.Join(s.cacheDir, "settings.json") }
 
 func (s *server) loadSettings() Settings {
-	st := Settings{OutRoot: defaultOutRoot(), HintMode: string(display.ModeAuto), Zip: true, ProxyMode: "auto"}
+	st := Settings{HintMode: string(display.ModeAuto), Zip: true, ProxyMode: "auto"}
 	if b, err := os.ReadFile(s.settingsPath()); err == nil {
 		_ = json.Unmarshal(b, &st)
 		// Settings written before the hint mode existed carry "hinted": bool.
@@ -181,8 +225,11 @@ func (s *server) loadSettings() Settings {
 	if _, err := display.ParseMode(st.HintMode); err != nil {
 		st.HintMode = string(display.ModeAuto)
 	}
-	if st.OutRoot == "" {
-		st.OutRoot = defaultOutRoot()
+	// A folder that is just the default (or not a full path) is not a choice:
+	// leave it empty so the output keeps following the program.
+	st.OutRoot = strings.TrimSpace(st.OutRoot)
+	if !filepath.IsAbs(st.OutRoot) || samePath(st.OutRoot, defaultOutRoot()) {
+		st.OutRoot = ""
 	}
 	if st.ProxyMode == "" {
 		st.ProxyMode = "auto"
@@ -541,7 +588,7 @@ func (s *server) handleState(r *http.Request) (any, error) {
 		"version":    app.Version,
 		"os":         runtime.GOOS,
 		"canPick":    platform.CanPick(),
-		"settings":   st,
+		"settings":   s.view(st),
 		"cacheDir":   s.cacheDir,
 		"logPath":    s.log.path,
 		"cached":     sarasa.CachedVersions(s.cacheDir),
@@ -561,7 +608,7 @@ func (s *server) handleSettings(r *http.Request) (any, error) {
 	if r.Method == http.MethodGet {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		return s.settings, nil
+		return s.view(s.settings), nil
 	}
 	s.mu.Lock()
 	next := s.settings
@@ -570,11 +617,15 @@ func (s *server) handleSettings(r *http.Request) (any, error) {
 		return nil, err
 	}
 	next.OutRoot = strings.TrimSpace(next.OutRoot)
-	if next.OutRoot == "" {
-		next.OutRoot = defaultOutRoot()
-	}
-	if !filepath.IsAbs(next.OutRoot) {
-		return nil, badRequest("输出文件夹需要是完整路径")
+	if next.OutRoot != "" {
+		if !filepath.IsAbs(next.OutRoot) {
+			return nil, badRequest("输出文件夹需要是完整路径")
+		}
+		next.OutRoot = filepath.Clean(next.OutRoot)
+		// Choosing the default folder itself means "next to the program".
+		if samePath(next.OutRoot, defaultOutRoot()) {
+			next.OutRoot = ""
+		}
 	}
 	if m, err := display.ParseMode(next.HintMode); err != nil {
 		return nil, badRequest("%v", err)
@@ -603,7 +654,19 @@ func (s *server) handleSettings(r *http.Request) (any, error) {
 	if err := s.saveSettings(next); err != nil {
 		s.logf("save settings: %v", err)
 	}
-	return next, nil
+	return s.view(next), nil
+}
+
+func (s *server) currentOutRoot() string {
+	s.mu.Lock()
+	st := s.settings
+	s.mu.Unlock()
+	return s.outRoot(st)
+}
+
+func isDir(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && st.IsDir()
 }
 
 func (s *server) proxyValue(st Settings) string {
@@ -662,7 +725,7 @@ func (s *server) handlePreset(r *http.Request) (any, error) {
 		Preset: p.ID, Hinted: hinted, HintNote: hintNote, Version: st.Version,
 		CacheDir: s.cacheDir, TempDir: filepath.Join(s.cacheDir, "tmp"),
 		Proxy: s.proxyValue(st), Mirror: st.Mirror,
-		OutRoot: st.OutRoot, Zip: st.Zip,
+		OutRoot: s.outRoot(st), Zip: st.Zip,
 	}
 	if st.UseLocal {
 		if strings.TrimSpace(st.SarasaLocal) == "" {
@@ -706,18 +769,14 @@ func (s *server) handlePick(r *http.Request) (any, error) {
 		opt = platform.PickOptions{Title: "选择 SarasaUi-TTF-*.zip", Filters: []platform.Filter{{Name: "Sarasa UI 压缩包 (*.zip)", Pattern: "*.zip"}}}
 	case "package":
 		opt = platform.PickOptions{Title: "选择字体包文件夹（含 fonts 子文件夹）", Folder: true}
-		s.mu.Lock()
-		if st, err := os.Stat(s.settings.OutRoot); err == nil && st.IsDir() {
-			opt.Initial = s.settings.OutRoot
+		if root := s.currentOutRoot(); isDir(root) {
+			opt.Initial = root
 		}
-		s.mu.Unlock()
 	case "output":
 		opt = platform.PickOptions{Title: "选择输出文件夹", Folder: true}
-		s.mu.Lock()
-		if st, err := os.Stat(s.settings.OutRoot); err == nil && st.IsDir() {
-			opt.Initial = s.settings.OutRoot
+		if root := s.currentOutRoot(); isDir(root) {
+			opt.Initial = root
 		}
-		s.mu.Unlock()
 	default:
 		return nil, badRequest("unknown purpose")
 	}
@@ -923,7 +982,7 @@ func (s *server) handleCustomBuild(r *http.Request) (any, error) {
 	if _, err := custom.ToRecipe(faces, ev); err != nil {
 		return nil, badRequest("%v", err)
 	}
-	opt := app.CustomOptions{Faces: faces, Request: req, OutRoot: st.OutRoot, Zip: st.Zip}
+	opt := app.CustomOptions{Faces: faces, Request: req, OutRoot: s.outRoot(st), Zip: st.Zip}
 	s.customDisplayOptions(&opt)
 	j, err := s.startJob("custom", "生成自定义字体包", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		res, err := app.RunCustom(ctx, opt, sink)
@@ -1085,9 +1144,7 @@ func (s *server) handleSystemReboot(r *http.Request) (any, error) {
 }
 
 func (s *server) handlePackages(r *http.Request) (any, error) {
-	s.mu.Lock()
-	root := s.settings.OutRoot
-	s.mu.Unlock()
+	root := s.currentOutRoot()
 	return map[string]any{"root": root, "packages": pack.List(root)}, nil
 }
 
@@ -1096,9 +1153,7 @@ func (s *server) handleSystemBackup(r *http.Request) (any, error) {
 	if dir == "" {
 		return nil, httpError{http.StatusNotImplemented, "只有 Windows 上才能备份系统字体"}
 	}
-	s.mu.Lock()
-	root := s.settings.OutRoot
-	s.mu.Unlock()
+	root := s.currentOutRoot()
 	j, err := s.startJob("backup", "备份当前系统字体", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		sink.Stage("backup", "正在从 "+dir+" 复制 6 个字体文件")
 		dest, err := sysfonts.Backup(dir, root, sink)

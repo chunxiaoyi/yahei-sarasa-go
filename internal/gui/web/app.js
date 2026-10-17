@@ -122,7 +122,7 @@ function renderSourceLine() {
     const cached = (state.info.cached || []).filter((c) => c.endsWith(effectiveHinted() ? '-hinted' : '-unhinted'));
     if (cached.length) src += `，已缓存 ${esc(cached.map((c) => c.split('-')[0]).join('、'))}`;
   }
-  const out = `输出到 ${esc(st.outRoot)}${st.zip ? '，并打包 ZIP' : ''}`;
+  const out = `输出到 ${esc(st.outRootActual || st.outRoot)}${st.zip ? '，并打包 ZIP' : ''}`;
   $('#source-line').innerHTML = `${src}。${out}。 <button class="link" data-goto="settings">更改</button>`;
 }
 
@@ -699,6 +699,7 @@ function fillSettings() {
   const st = state.settings;
   const f = $('#settings');
   f.elements.outRoot.value = st.outRoot || '';
+  outPlaceholder();
   $$('input[name="hintMode"]', f).forEach((r) => { r.checked = (st.hintMode || 'auto') === r.value; });
   renderHintDetect();
   f.elements.zip.checked = !!st.zip;
@@ -713,6 +714,12 @@ function fillSettings() {
     <span>缓存与设置：<code>${esc(state.info.cacheDir)}</code></span>
     ${state.info.logPath ? `<span>运行日志：<code>${esc(state.info.logPath)}</code></span>` : ''}`;
   $$('[data-pick]').forEach((b) => { b.hidden = !state.info.canPick; });
+}
+
+// The empty output field shows where packages go when nothing is chosen.
+function outPlaceholder() {
+  const st = state.settings;
+  $('#settings').elements.outRoot.placeholder = st.outRootDefault || '';
 }
 
 let saveTimer = 0;
@@ -737,6 +744,7 @@ async function saveSettings() {
     state.settings = await api('/api/settings', collectSettings());
     status.style.color = '';
     status.textContent = '已保存';
+    outPlaceholder();
     renderSourceLine();
     renderHintDetect();
   } catch (err) {
