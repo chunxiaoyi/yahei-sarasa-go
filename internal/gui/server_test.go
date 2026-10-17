@@ -27,7 +27,12 @@ type testEnv struct {
 func newEnv(t *testing.T) *testEnv {
 	t.Helper()
 	out := t.TempDir()
-	s, err := newServer(Options{CacheDir: t.TempDir(), OutRoot: out})
+	return newEnvWith(t, Options{CacheDir: t.TempDir(), OutRoot: out}, out)
+}
+
+func newEnvWith(t *testing.T, opt Options, out string) *testEnv {
+	t.Helper()
+	s, err := newServer(opt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,5 +186,81 @@ func TestSecondJobRejectedWhileRunning(t *testing.T) {
 	close(release)
 	if code != http.StatusConflict {
 		t.Fatalf("second job: %d", code)
+	}
+}
+
+func TestOutRootFollowsProgram(t *testing.T) {
+	cache := t.TempDir()
+	e := newEnvWith(t, Options{CacheDir: cache}, "")
+	def := defaultOutRoot()
+	settings := func(body any) map[string]any {
+		t.Helper()
+		method := "GET"
+		if body != nil {
+			method = "POST"
+		}
+		code, st := e.do(method, "/api/settings", body, true)
+		if code != http.StatusOK {
+			t.Fatalf("%s settings: %d %v", method, code, st)
+		}
+		return st
+	}
+	saved := func() string {
+		t.Helper()
+		b, err := os.ReadFile(e.s.settingsPath())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var st Settings
+		if err := json.Unmarshal(b, &st); err != nil {
+			t.Fatal(err)
+		}
+		return st.OutRoot
+	}
+
+	if st := settings(nil); st["outRoot"] != "" || st["outRootActual"] != def || st["outRootDefault"] != def {
+		t.Fatalf("fresh settings: %v", st)
+	}
+	// Saving other settings, or picking the default folder itself, keeps
+	// following the program.
+	settings(map[string]any{"zip": false})
+	if got := saved(); got != "" {
+		t.Fatalf("default folder was saved: %q", got)
+	}
+	settings(map[string]any{"outRoot": def + string(filepath.Separator)})
+	if got := saved(); got != "" {
+		t.Fatalf("default folder chosen explicitly was saved: %q", got)
+	}
+	// A folder the user chose is kept until the field is cleared.
+	mine := t.TempDir()
+	if st := settings(map[string]any{"outRoot": mine}); st["outRoot"] != mine || st["outRootActual"] != mine {
+		t.Fatalf("custom folder: %v", st)
+	}
+	if got := saved(); got != mine {
+		t.Fatalf("custom folder not saved: %q", got)
+	}
+	if st := settings(map[string]any{"outRoot": ""}); st["outRoot"] != "" || st["outRootActual"] != def {
+		t.Fatalf("cleared folder: %v", st)
+	}
+
+	// A settings file holding the default folder as a full path loads as
+	// "follow the program".
+	b, _ := json.Marshal(Settings{OutRoot: def, HintMode: "auto", ProxyMode: "auto"})
+	if err := os.WriteFile(e.s.settingsPath(), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if st := e.s.loadSettings(); st.OutRoot != "" {
+		t.Fatalf("stored default not treated as default: %q", st.OutRoot)
+	}
+
+	// The -out folder of one run is used but never saved.
+	run := t.TempDir()
+	e2 := newEnvWith(t, Options{CacheDir: cache, OutRoot: run}, run)
+	code, st := e2.do("POST", "/api/settings", map[string]any{"zip": true}, true)
+	if code != http.StatusOK || st["outRoot"] != "" || st["outRootActual"] != run {
+		t.Fatalf("override: %d %v", code, st)
+	}
+	if got := saved(); got != "" {
+		t.Fatalf("override was saved: %q", got)
 	}
 }
