@@ -181,3 +181,7 @@ internal/platform       Windows 原生对话框、Edge 窗口、系统代理
 ```
 
 历史实验记录（D2/D4 等）见 [changelog.md](changelog.md)。
+
+## 已知问题
+
+- **Telegram Desktop 开了 FreeType 字体引擎时，unhinted 包的字距变宽。** 在 Telegram 的 Settings → Advanced → Experimental settings 里打开「FreeType font engine」（或会强制使用 FreeType 的「High DPI downscale」）后，Telegram 不再用 Windows 自带的文字渲染，改用 FreeType。FreeType 遇到不带 hinting 指令的字体会自动 hinting，字形度量随之改变：Telegram 按 x 高度匹配字号时会选大一号，粗体文字每个字还会多出 1 像素（200% 缩放下是 2 像素）。hinted 包不受影响，其他程序也不受影响。这两个选项默认关闭；遇到这种情况，关掉它们并重启 Telegram，或改用 hinted 包即可。
