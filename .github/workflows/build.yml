@@ -28,3 +28,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: CLI -result folder checks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          go build -o yahei-sarasa-cli.exe .
+          gh release download 2.0.0 --repo "${{ github.repository }}" --pattern yahei-sarasa-cli.exe --output old-cli.exe
+          .github/scripts/result-dir-check.sh ./yahei-sarasa-cli.exe ./old-cli.exe
