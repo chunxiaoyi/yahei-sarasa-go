@@ -10,6 +10,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # the Release step publishes to GitHub Releases on a tag
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
