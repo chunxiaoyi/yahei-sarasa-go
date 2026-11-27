@@ -99,3 +99,78 @@ func TestSafeName(t *testing.T) {
 		}
 	}
 }
+
+func TestPrepareResultDirCreatesMissingFolder(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "a", "result")
+	if err := PrepareResultDir(dir); err != nil {
+		t.Fatal(err)
+	}
+	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
+		t.Fatalf("folder not created: %v", err)
+	}
+}
+
+func TestPrepareResultDirClearsPreviousOutputs(t *testing.T) {
+	dir := t.TempDir()
+	// A previous run (any version) left the generated fonts; names may come
+	// back in another case after a manual copy on Windows.
+	for _, n := range []string{recipe.OutMSYH, strings.ToUpper(recipe.OutSegoeUI), recipe.OutSimSunB} {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("old"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := PrepareResultDir(dir); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("stale outputs left behind: %v", entries)
+	}
+}
+
+func TestPrepareResultDirNeverDeletesForeignContent(t *testing.T) {
+	cases := map[string]func(dir string){
+		"other file": func(dir string) {
+			os.WriteFile(filepath.Join(dir, "important.txt"), []byte("user data"), 0o644)
+		},
+		"subfolder": func(dir string) {
+			os.MkdirAll(filepath.Join(dir, "photos"), 0o755)
+		},
+		"folder named like an output": func(dir string) {
+			os.MkdirAll(filepath.Join(dir, recipe.OutMSYHL), 0o755)
+		},
+	}
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			font := filepath.Join(dir, recipe.OutMSYH)
+			os.WriteFile(font, []byte("old"), 0o644)
+			setup(dir)
+			before, _ := os.ReadDir(dir)
+			if err := PrepareResultDir(dir); err == nil {
+				t.Fatal("reused a folder with content this tool did not write")
+			}
+			after, _ := os.ReadDir(dir)
+			if len(after) != len(before) {
+				t.Fatalf("folder was changed: before %v, after %v", before, after)
+			}
+			if b, err := os.ReadFile(font); err != nil || string(b) != "old" {
+				t.Fatal("output-named file was removed although the folder was refused")
+			}
+		})
+	}
+}
+
+func TestPrepareResultDirRejectsFile(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "result")
+	os.WriteFile(f, []byte("x"), 0o644)
+	if err := PrepareResultDir(f); err == nil {
+		t.Fatal("accepted a file as the result folder")
+	}
+	if b, err := os.ReadFile(f); err != nil || string(b) != "x" {
+		t.Fatal("file was changed")
+	}
+}

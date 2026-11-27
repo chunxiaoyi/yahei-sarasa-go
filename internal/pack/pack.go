@@ -110,6 +110,54 @@ func Prepare(root, name string) (pkgDir, fontsDir string, err error) {
 	return pkgDir, fontsDir, nil
 }
 
+// PrepareResultDir readies dir for a fonts-only build (the CLI's -result
+// folder, which holds exactly the generated fonts and nothing else, so it
+// carries no marker file). The folder is created if missing. An existing
+// folder is reused only if every entry in it is a regular file named like
+// one of the tool's outputs; those files are removed and the folder kept.
+// Anything else in it means the folder is not ours, and it is left
+// untouched.
+func PrepareResultDir(dir string) error {
+	st, err := os.Stat(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return os.MkdirAll(dir, 0o755)
+	}
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() {
+		return fmt.Errorf("-result 指定的 %s 不是文件夹", dir)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	var stale []string
+	for _, e := range entries {
+		if !e.Type().IsRegular() || !isOutputName(e.Name()) {
+			return fmt.Errorf("-result 指定的文件夹 %s 里有不是本工具生成的内容（%s），为避免误删已停止；请换一个空文件夹或不存在的路径", dir, e.Name())
+		}
+		stale = append(stale, e.Name())
+	}
+	for _, name := range stale {
+		if err := os.Remove(filepath.Join(dir, name)); err != nil {
+			return fmt.Errorf("无法删除上次生成的 %s：%w（是否被其他程序占用？）", filepath.Join(dir, name), err)
+		}
+	}
+	return nil
+}
+
+// isOutputName reports whether name is one of the font files this tool
+// writes. Windows file names are case-insensitive, so the match is too.
+func isOutputName(name string) bool {
+	for _, n := range recipe.AllOutputs {
+		if strings.EqualFold(name, n) {
+			return true
+		}
+	}
+	return false
+}
+
 // ReadManifest returns the manifest of a package folder made by this tool.
 func ReadManifest(dir string) (*Manifest, error) {
 	b, err := os.ReadFile(filepath.Join(dir, ManifestName))

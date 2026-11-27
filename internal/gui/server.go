@@ -409,8 +409,12 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	s.mu.Lock()
-	hello, _ := json.Marshal(map[string]any{"job": s.job})
+	var current *job
+	if s.job != nil {
+		current = s.job.snapshot()
+	}
 	s.mu.Unlock()
+	hello, _ := json.Marshal(map[string]any{"job": current})
 	fmt.Fprintf(w, "retry: 1000\nevent: hello\ndata: %s\n\n", hello)
 	flusher.Flush()
 
@@ -436,7 +440,10 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 // ---- jobs ----------------------------------------------------------------
 
-func (s *server) startJob(kind, title string, run func(ctx context.Context, sink progress.Sink) (*app.Result, string, error)) (*job, error) {
+// startJob starts run as the current job and returns a snapshot of it
+// (without events) that is safe to hand out. action is set before the job
+// becomes visible to anyone else.
+func (s *server) startJob(kind, title, action string, run func(ctx context.Context, sink progress.Sink) (*app.Result, string, error)) (*job, error) {
 	s.mu.Lock()
 	if s.job != nil && s.job.State == "running" {
 		s.mu.Unlock()
@@ -444,11 +451,12 @@ func (s *server) startJob(kind, title string, run func(ctx context.Context, sink
 	}
 	s.jobSeq++
 	ctx, cancel := context.WithCancel(context.Background())
-	j := &job{ID: fmt.Sprintf("job-%d", s.jobSeq), Kind: kind, Title: title, State: "running", Started: time.Now(), cancel: cancel}
+	j := &job{ID: fmt.Sprintf("job-%d", s.jobSeq), Kind: kind, Title: title, Action: action, State: "running", Started: time.Now(), cancel: cancel}
 	s.job = j
+	started := j.summary()
 	s.mu.Unlock()
 	s.logf("job %s started: %s", j.ID, title)
-	s.broadcast("job", j.summary())
+	s.broadcast("job", started)
 
 	sink := func(e progress.Event) {
 		je := jobEvent{Event: e, T: time.Now().UnixMilli()}
@@ -486,7 +494,7 @@ func (s *server) startJob(kind, title string, run func(ctx context.Context, sink
 		res, backup, err := run(ctx, sink)
 		s.finishJob(j, res, backup, err)
 	}()
-	return j, nil
+	return started, nil
 }
 
 func (s *server) finishJob(j *job, res *app.Result, backup string, err error) {
@@ -505,17 +513,29 @@ func (s *server) finishJob(j *job, res *app.Result, backup string, err error) {
 		j.State = "failed"
 		j.Error = err.Error()
 	}
+	finished := j.summary()
 	s.mu.Unlock()
-	s.logf("job %s %s %s", j.ID, j.State, j.Error)
-	s.broadcast("job", j.summary())
+	s.logf("job %s %s %s", finished.ID, finished.State, finished.Error)
+	s.broadcast("job", finished)
 	runtime.GC()
 }
 
-// summary is the job without its (possibly long) event backlog.
+// summary is a copy of the job without its (possibly long) event backlog.
+// The caller must hold s.mu.
 func (j *job) summary() *job {
 	c := *j
 	c.Events = nil
+	c.cancel = nil
 	return &c
+}
+
+// snapshot is a copy of the job that shares nothing it can still change:
+// the sink rewrites the last event in place and trims the backlog, so the
+// events are copied too. The caller must hold s.mu.
+func (j *job) snapshot() *job {
+	c := j.summary()
+	c.Events = append([]jobEvent(nil), j.Events...)
+	return c
 }
 
 func (s *server) cancelJob() {
@@ -566,8 +586,7 @@ func (s *server) handleState(r *http.Request) (any, error) {
 	st := s.settings
 	var jobView *job
 	if s.job != nil {
-		c := *s.job
-		jobView = &c
+		jobView = s.job.snapshot()
 	}
 	files := s.fileList()
 	s.mu.Unlock()
@@ -733,14 +752,14 @@ func (s *server) handlePreset(r *http.Request) (any, error) {
 		}
 		opt.Local = st.SarasaLocal
 	}
-	j, err := s.startJob("preset", "生成 "+p.Name, func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+	j, err := s.startJob("preset", "生成 "+p.Name, "", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		res, err := app.RunPreset(ctx, opt, sink)
 		return res, "", err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return j.summary(), nil
+	return j, nil
 }
 
 // ---- pickers & reveal --------------------------------------------------------
@@ -984,14 +1003,14 @@ func (s *server) handleCustomBuild(r *http.Request) (any, error) {
 	}
 	opt := app.CustomOptions{Faces: faces, Request: req, OutRoot: s.outRoot(st), Zip: st.Zip}
 	s.customDisplayOptions(&opt)
-	j, err := s.startJob("custom", "生成自定义字体包", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+	j, err := s.startJob("custom", "生成自定义字体包", "", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		res, err := app.RunCustom(ctx, opt, sink)
 		return res, "", err
 	})
 	if err != nil {
 		return nil, err
 	}
-	return j.summary(), nil
+	return j, nil
 }
 
 // ---- system fonts -------------------------------------------------------------
@@ -1077,16 +1096,13 @@ func (s *server) handleSystemRun(r *http.Request) (any, error) {
 		return nil, httpError{http.StatusNotImplemented, sysinstall.ErrUnsupported.Error()}
 	}
 	titles := map[string]string{"install": "安装字体包到系统", "restore": "还原备份", "forget": "删除一份备份", "clear-cache": "清空字体缓存", "cancel": "取消待重启的操作"}
-	j, err := s.startJob("system", titles[req.Action], func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+	j, err := s.startJob("system", titles[req.Action], req.Action, func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		return nil, "", s.runElevated(sink, req)
 	})
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	j.Action = req.Action
-	s.mu.Unlock()
-	return j.summary(), nil
+	return j, nil
 }
 
 // runElevated starts this program as `system <action>` through UAC and
@@ -1154,7 +1170,7 @@ func (s *server) handleSystemBackup(r *http.Request) (any, error) {
 		return nil, httpError{http.StatusNotImplemented, "只有 Windows 上才能备份系统字体"}
 	}
 	root := s.currentOutRoot()
-	j, err := s.startJob("backup", "备份当前系统字体", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
+	j, err := s.startJob("backup", "备份当前系统字体", "", func(ctx context.Context, sink progress.Sink) (*app.Result, string, error) {
 		sink.Stage("backup", "正在从 "+dir+" 复制 6 个字体文件")
 		dest, err := sysfonts.Backup(dir, root, sink)
 		if err == nil {
@@ -1165,5 +1181,5 @@ func (s *server) handleSystemBackup(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return j.summary(), nil
+	return j, nil
 }
