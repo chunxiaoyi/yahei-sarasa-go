@@ -1,3 +1,7 @@
-# Shell scripts must keep LF endings, or bash on Windows (Git for Windows
-# checks out with autocrlf) fails on the carriage returns.
-*.sh text eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.sh  text eol=lf
+*.ttf binary
+*.ttc binary
+*.otf binary
+*.woff binary
