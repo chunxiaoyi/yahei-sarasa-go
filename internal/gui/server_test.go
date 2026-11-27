@@ -175,7 +175,7 @@ func TestCustomFlowThroughAPI(t *testing.T) {
 func TestSecondJobRejectedWhileRunning(t *testing.T) {
 	e := newEnv(t)
 	release := make(chan struct{})
-	_, err := e.s.startJob("test", "blocking", func(ctx context.Context, _ progress.Sink) (*app.Result, string, error) {
+	_, err := e.s.startJob("test", "blocking", "", func(ctx context.Context, _ progress.Sink) (*app.Result, string, error) {
 		<-release
 		return nil, "", nil
 	})
