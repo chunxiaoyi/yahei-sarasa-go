@@ -101,7 +101,7 @@ build 选项：
   -version 1.0.42              固定 Sarasa 版本（默认最新）
   -hint auto|hinted|unhinted   auto = 按这台电脑的屏幕缩放自动判定（任一屏幕低于 150% 用 hinted）
   -hinted=true|false           不给 -hint 时使用：true = hinted（默认），false = unhinted
-  -result ./result             输出目录（只放 6 个字体）
+  -result ./result             输出目录（只放 6 个字体；里面有本工具生成的字体以外的东西时拒绝使用）
   -out 目录                    改为生成完整的包（fonts/ + manifest + 校验 + 说明）
   -zip                         与 -out 一起：额外打成 zip
   -cache 目录                  缓存下载的 Sarasa（"auto" = 用户缓存目录）

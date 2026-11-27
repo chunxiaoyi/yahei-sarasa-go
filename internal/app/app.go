@@ -260,10 +260,7 @@ func RunCustom(ctx context.Context, opt CustomOptions, sink progress.Sink) (*Res
 
 func outputDirs(resultDir, outRoot, name string) (pkgDir, fontsDir string, err error) {
 	if resultDir != "" {
-		if err := os.RemoveAll(resultDir); err != nil {
-			return "", "", err
-		}
-		if err := os.MkdirAll(resultDir, 0o755); err != nil {
+		if err := pack.PrepareResultDir(resultDir); err != nil {
 			return "", "", err
 		}
 		return "", resultDir, nil
